@@ -430,11 +430,11 @@ class WorkChainViewer(ipw.VBox):
 
         self.summary_tab = ipw.VBox(children=[self.workflows_summary])
         self.structure_tab = ipw.VBox(
-            [ipw.Label("Structure not available.")],
+            [ipw.Label("Structure is being calculated.")],
             layout=ipw.Layout(min_height="380px"),
         )
         self.bands_tab = ipw.VBox(
-            [ipw.Label("Electronic Structure not available.")],
+            [ipw.Label("Electronic Structure is being calculated.")],
             layout=ipw.Layout(min_height="380px"),
         )
         self.result_tabs = ipw.Tab(
