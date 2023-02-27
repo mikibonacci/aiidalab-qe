@@ -11,6 +11,7 @@ jobs:
         runs-on: ubuntu-latest
         container:
             image: aiidalab/full-stack
+            options: --user root
 
         steps:
             - uses: actions/checkout@v2
