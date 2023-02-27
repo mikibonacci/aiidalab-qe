@@ -1,0 +1,20 @@
+---
+name: Unit Test
+
+on: [push]
+
+jobs:
+    unittests:
+        defaults:
+            run:
+                shell: bash
+        runs-on: ubuntu-latest
+        container:
+            image: aiidalab/full-stack
+
+        steps:
+            - uses: actions/checkout@v2
+            - name: Run unittests
+              run: |
+                  cd tests
+                  pytest -svv
