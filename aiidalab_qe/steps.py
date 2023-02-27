@@ -1106,6 +1106,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             relax_type=RelaxType(parameters["relax_type"]),
             spin_type=SpinType(parameters["spin_type"]),
             electronic_type=ElectronicType(parameters["electronic_type"]),
+            run_xps=Bool(parameters.get("run_xps", False)),
             overrides=Dict(overrides),
         )
 
@@ -1135,7 +1136,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             builder.pop("pdos")
 
         if not parameters.get("run_xps", False):
-            builder.pop("xps")
+            builder.pop("xps", None)
 
         resources = {
             "num_machines": self.resources_config.num_nodes.value,
