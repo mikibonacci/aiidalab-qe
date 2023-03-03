@@ -348,7 +348,7 @@ class SpectroscopySettings(ipw.VBox):
     )
     element_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
-        The list of elements to be considered for analysis. If no elements list is given, we instead calculate all elements in the structure.
+        The list of elements (e.g. C, O) to be considered for analysis. If no elements list is given, we instead calculate all elements in the structure.
         </div>"""
     )
     structure_title = ipw.HTML(
@@ -379,7 +379,7 @@ class SpectroscopySettings(ipw.VBox):
     )
     binding_energy_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
-        To calculate the absolute binding energy, you need to provide the correction energy for the core electrons.
+        To calculate the absolute binding energy, you need to provide the correction energy for the core electrons. The correction energy is Ecorr = E_core_hole - E_gipaw, where E_core_hole and E_gipaw are calculated by Etot - Etotps. Etot and Etotps can be found in the output when generating the pseudo potential. Here is a example: C:399.29,O:676.47
         </div>"""
     )
 
@@ -422,7 +422,7 @@ class SpectroscopySettings(ipw.VBox):
         )
         self.supercell_min_parameter = ipw.FloatText(
             value=8.0,
-            description="The minimum cell length:",
+            description="The minimum cell length (Å):",
             disabled=False,
             style={"description_width": "initial"},
         )
@@ -432,7 +432,7 @@ class SpectroscopySettings(ipw.VBox):
             value=False,
         )
         self.correction_energies = ipw.Text(
-            description="Correction energies:",
+            description="Correction energies (eV):",
             value="",
             style={"description_width": "initial"},
             disabled=False,
