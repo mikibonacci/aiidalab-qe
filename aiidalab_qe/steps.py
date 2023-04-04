@@ -1090,12 +1090,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 continue
             element, energy = item.replace(" ", "").split(":")
             overrides["xps"]["correction_energies"][element] = float(energy)
-        overrides["xps"]["structure_preparation_settings"] = Dict(
-            {
-                "is_molecule_input": Bool(parameters["structure_type"] == "molecule"),
-                "supercell_min_parameter": Float(parameters["supercell_min_parameter"]),
-            }
-        )
+        overrides["xps"]["structure_preparation_settings"] = {
+            "is_molecule_input": Bool(parameters["structure_type"] == "molecule"),
+            "supercell_min_parameter": Float(parameters["supercell_min_parameter"]),
+        }
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
             pw_code=load_code(parameters["pw_code"]),
