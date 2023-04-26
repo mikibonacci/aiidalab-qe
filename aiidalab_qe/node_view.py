@@ -31,6 +31,7 @@ from widget_bandsplot import BandsPlotWidget
 
 from aiidalab_qe import static
 from aiidalab_qe.report import generate_report_dict
+from aiidalab_qe.utils import get_entries
 
 
 class MinimalStructureViewer(ipw.VBox):
@@ -542,6 +543,13 @@ class WorkChainViewer(ipw.VBox):
         self.result_tabs.set_title(1, "Final Geometry (n/a)")
         self.result_tabs.set_title(2, "Electronic Structure (n/a)")
 
+        # add plugin specific settings
+        entries = get_entries("aiidalab_qe_result")
+        # print("plugin entries: ", entries)
+        for name, entry_point in entries.items():
+            # print(name, entry_point)
+            self.result_tabs.children += (entry_point(self.node), )
+            self.result_tabs.set_title(len(self.result_tabs.children) - 1, name)
         # An ugly fix to the structure appearance problem
         # https://github.com/aiidalab/aiidalab-qe/issues/69
         def on_selected_index_change(change):

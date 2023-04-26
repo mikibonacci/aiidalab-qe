@@ -7,6 +7,7 @@ from aiida.plugins import DataFactory, WorkflowFactory
 # AiiDA Quantum ESPRESSO plugin inputs.
 from aiida_quantumespresso.common.types import RelaxType
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
+from aiidalab_qe.utils import get_entries
 
 # Data objects and work chains.
 PwRelaxWorkChain = WorkflowFactory("quantumespresso.pw.relax")
@@ -29,6 +30,16 @@ class QeAppWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         """Define the process specification."""
+        entries = get_entries("aiidalab_qe_workchain")
+        i = 1
+        for name, entry_point in entries.items():
+            plugin_workchain = entry_point.load()
+            spec.expose_inputs(plugin_workchain, namespace=name,
+                           namespace_options={'required': False, 'populate_defaults': False,
+                                              'help': f'Inputs for the {name} plugin.'})
+            spec.exit_code(404 + 1, f'ERROR_SUB_PROCESS_FAILED_{name}',
+                       message=f'The plugin {name} WorkChain sub process failed')
+        
         # yapf: disable
         super().define(spec)
         spec.input('structure', valid_type=StructureData,
@@ -72,6 +83,8 @@ class QeAppWorkChain(WorkChain):
                 cls.run_pdos,
                 cls.inspect_pdos
             ),
+            cls.run_plugin,
+            cls.inspect_plugin,
             cls.results
         )
         spec.exit_code(401, 'ERROR_SUB_PROCESS_FAILED_RELAX',
@@ -101,6 +114,7 @@ class QeAppWorkChain(WorkChain):
         overrides=None,
         relax_type=RelaxType.NONE,
         pseudo_family=None,
+        plugin_parameters=None,
         **kwargs,
     ):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
@@ -166,7 +180,18 @@ class QeAppWorkChain(WorkChain):
             builder.degauss_override = overrides["degauss_override"]
         if "smearing_override" in overrides:
             builder.smearing_override = overrides["smearing_override"]
-
+        # add plugin workchain
+        entries = get_entries("aiidalab_qe_workchain")
+        for name, entry_point in entries.items():
+            workchain = entry_point
+            plugin = workchain.get_builder_from_protocol(
+                pw_code=pw_code,
+                structure=structure,
+                protocol=protocol,
+                **plugin_parameters.get(name, {}),
+            )
+            plugin.pop("structure", None)
+            setattr(builder, name, plugin)
         return builder
 
     def setup(self):
@@ -339,6 +364,32 @@ class QeAppWorkChain(WorkChain):
                 f"PdosWorkChain failed with exit status {workchain.exit_status}"
             )
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_PDOS
+
+    def run_plugin(self):
+        """Run the `PdosWorkChain`."""
+        entries = get_entries("aiidalab_qe_workchain")
+        plugin_running = {}
+        for name, entry_point in entries.items():
+            plugin_workchain = entry_point.load()
+            inputs = AttributeDict(self.exposed_inputs(plugin_workchain, namespace="name"))
+            inputs.metadata.call_link_label = name
+            inputs.structure = self.ctx.current_structure
+            inputs = prepare_process_inputs(plugin_workchain, inputs)
+            running = self.submit(plugin_workchain, **inputs)
+            self.report(f"launching plugin {name} <{running.pk}>")
+            plugin_running = {name: running}
+
+        return ToContext(workchain_plugin=plugin_running)
+
+    def inspect_plugin(self):
+        """Verify that the `pluginWorkChain` finished successfully."""
+        workchains = self.ctx.workchain_plugin
+        for name, workchain in workchains.items():
+            if not workchain.is_finished_ok:
+                self.report(
+                    f"Plugin {name} WorkChain failed with exit status {workchain.exit_status}"
+                )
+                return self.exit_codes.get(f'ERROR_SUB_PROCESS_FAILED_{name}')
 
     def results(self):
         """Add the results to the outputs."""

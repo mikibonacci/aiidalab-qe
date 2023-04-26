@@ -30,6 +30,7 @@ from aiidalab_qe.setup_codes import QESetupWidget
 from aiidalab_qe.sssp import SSSPInstallWidget
 from aiidalab_qe.widgets import ParallelizationSettings, ResourceSelectionWidget
 from aiidalab_qe_workchain import QeAppWorkChain
+from aiidalab_qe.utils import get_entries
 
 StructureData = DataFactory("core.structure")
 Float = DataFactory("core.float")
@@ -129,8 +130,20 @@ class WorkChainSettings(ipw.VBox):
             options=["fast", "moderate", "precise"],
             value="moderate",
         )
-        super().__init__(
-            children=[
+        properties = (self.properties_title,
+                ipw.HTML("Select which properties to calculate:"),
+                ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
+                ipw.HBox(
+                    children=[
+                        ipw.HTML("<b>Projected density of states</b>"),
+                        self.pdos_run,
+                    ]
+                ),
+                self.properties_help)
+        entries = get_entries("aiidalab_qe_property")
+        for name, entry_point in entries.items():
+            properties += (entry_point, )
+        children = (
                 self.structure_title,
                 self.structure_help,
                 self.relax_type,
@@ -157,21 +170,14 @@ class WorkChainSettings(ipw.VBox):
                         self.spin_type,
                     ]
                 ),
-                self.properties_title,
-                ipw.HTML("Select which properties to calculate:"),
-                ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
-                ipw.HBox(
-                    children=[
-                        ipw.HTML("<b>Projected density of states</b>"),
-                        self.pdos_run,
-                    ]
-                ),
-                self.properties_help,
                 self.protocol_title,
                 ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
                 self.workchain_protocol,
                 self.protocol_help,
-            ],
+        )
+        children += properties
+        super().__init__(
+            children=children,
             **kwargs,
         )
 
@@ -307,6 +313,13 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
 
     def __init__(self, **kwargs):
+        # add plugin specific settings
+        entries = get_entries("aiidalab_qe_configuration")
+        for name, entry_point in entries.items():
+            new_name = f"{name}_settings"
+            print(new_name)
+            setattr(self, new_name, entry_point())
+
         self.workchain_settings = WorkChainSettings()
         self.workchain_settings.relax_type.observe(self._update_state, "value")
         self.workchain_settings.bands_run.observe(self._update_state, "value")
@@ -356,6 +369,12 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.tab.set_title(0, "Workflow")
         self.tab.set_title(1, "Advanced settings")
+        
+        # add plugin specific settings
+        entries = get_entries("aiidalab_qe_configuration")
+        for name, entry_point in entries.items():
+            self.tab.children += (getattr(self, f"{name}_settings"),)
+            self.tab.set_title(len(self.tab.children) - 1, name)
 
         self._submission_blocker_messages = ipw.HTML()
 
@@ -470,8 +489,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
     _submission_blockers = traitlets.List(traitlets.Unicode)
+    
 
     def __init__(self, **kwargs):
+        # add plugin specific settings
+        entries = get_entries("aiidalab_qe_configuration")
+        for name, entry_point in entries.items():
+            new_name = f"{name}_settings"
+            print(new_name)
+            setattr(self, new_name, traitlets.Instance(entry_point, allow_none=True))
+        #
         self.message_area = ipw.Output()
         self._submission_blocker_messages = ipw.HTML()
 
@@ -781,6 +808,16 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         return parameters
 
+    def get_plugin_input_parameters(self):
+        """Get the builder parameters based on the plugin GUI inputs."""
+        # read plugin specific settings
+        plugin_parameters = {}
+        entries = get_entries("aiidalab_qe_configuration")
+        for name, entry_point in entries.items():
+            settings = getattr(self, f"{name}_settings")
+            plugin_parameters = {name: settings.get_plugin_input_parameters()}
+        return plugin_parameters
+
     def set_selected_codes(self, parameters):
         """Set the inputs in the GUI based on a set of parameters."""
 
@@ -833,6 +870,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         assert self.input_structure is not None
         parameters = self.get_input_parameters()
+        plugin_parameters = self.get_plugin_input_parameters()
 
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
@@ -844,6 +882,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             relax_type=RelaxType(parameters["relax_type"]),
             spin_type=SpinType(parameters["spin_type"]),
             electronic_type=ElectronicType(parameters["electronic_type"]),
+            plugin_parameters=plugin_parameters,
         )
 
         if "kpoints_distance_override" in parameters:
