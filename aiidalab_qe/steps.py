@@ -28,9 +28,9 @@ from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.pseudos import PseudoFamilySelector
 from aiidalab_qe.setup_codes import QESetupWidget
 from aiidalab_qe.sssp import SSSPInstallWidget
+from aiidalab_qe.utils import get_entries
 from aiidalab_qe.widgets import ParallelizationSettings, ResourceSelectionWidget
 from aiidalab_qe_workchain import QeAppWorkChain
-from aiidalab_qe.utils import get_entries
 
 StructureData = DataFactory("core.structure")
 Float = DataFactory("core.float")
@@ -130,50 +130,48 @@ class WorkChainSettings(ipw.VBox):
             options=["fast", "moderate", "precise"],
             value="moderate",
         )
-        properties = (self.properties_title,
-                ipw.HTML("Select which properties to calculate:"),
-                ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
-                ipw.HBox(
-                    children=[
-                        ipw.HTML("<b>Projected density of states</b>"),
-                        self.pdos_run,
-                    ]
-                ),
-                self.properties_help)
+        properties = (
+            self.properties_title,
+            ipw.HTML("Select which properties to calculate:"),
+            ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
+            ipw.HBox(
+                children=[
+                    ipw.HTML("<b>Projected density of states</b>"),
+                    self.pdos_run,
+                ]
+            ),
+            self.properties_help,
+        )
         entries = get_entries("aiidalab_qe_property")
-        for name, entry_point in entries.items():
-            properties += (entry_point, )
+        for _name, entry_point in entries.items():
+            properties += (entry_point,)
         children = (
-                self.structure_title,
-                self.structure_help,
-                self.relax_type,
-                self.materials_help,
-                ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "Electronic Type:",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="120px"
-                            ),
-                        ),
-                        self.electronic_type,
-                    ]
-                ),
-                ipw.HBox(
-                    children=[
-                        ipw.Label(
-                            "Magnetism:",
-                            layout=ipw.Layout(
-                                justify_content="flex-start", width="120px"
-                            ),
-                        ),
-                        self.spin_type,
-                    ]
-                ),
-                self.protocol_title,
-                ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
-                self.workchain_protocol,
-                self.protocol_help,
+            self.structure_title,
+            self.structure_help,
+            self.relax_type,
+            self.materials_help,
+            ipw.HBox(
+                children=[
+                    ipw.Label(
+                        "Electronic Type:",
+                        layout=ipw.Layout(justify_content="flex-start", width="120px"),
+                    ),
+                    self.electronic_type,
+                ]
+            ),
+            ipw.HBox(
+                children=[
+                    ipw.Label(
+                        "Magnetism:",
+                        layout=ipw.Layout(justify_content="flex-start", width="120px"),
+                    ),
+                    self.spin_type,
+                ]
+            ),
+            self.protocol_title,
+            ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
+            self.workchain_protocol,
+            self.protocol_help,
         )
         children += properties
         super().__init__(
@@ -369,10 +367,10 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self.tab.set_title(0, "Workflow")
         self.tab.set_title(1, "Advanced settings")
-        
+
         # add plugin specific settings
         entries = get_entries("aiidalab_qe_configuration")
-        for name, entry_point in entries.items():
+        for name in entries:
             self.tab.children += (getattr(self, f"{name}_settings"),)
             self.tab.set_title(len(self.tab.children) - 1, name)
 
@@ -489,16 +487,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
     pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
     _submission_blockers = traitlets.List(traitlets.Unicode)
-    
 
     def __init__(self, **kwargs):
-        # add plugin specific settings
-        entries = get_entries("aiidalab_qe_configuration")
-        for name, entry_point in entries.items():
-            new_name = f"{name}_settings"
-            print(new_name)
-            setattr(self, new_name, traitlets.Instance(entry_point, allow_none=True))
-        #
         self.message_area = ipw.Output()
         self._submission_blocker_messages = ipw.HTML()
 
@@ -813,8 +803,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         # read plugin specific settings
         plugin_parameters = {}
         entries = get_entries("aiidalab_qe_configuration")
-        for name, entry_point in entries.items():
-            settings = getattr(self, f"{name}_settings")
+        for name in entries:
+            settings = getattr(self.configure_step, f"{name}_settings")
             plugin_parameters = {name: settings.get_plugin_input_parameters()}
         return plugin_parameters
 
@@ -917,7 +907,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         }
 
         update_builder(builder, resources, self.parallelization.npools.value)
-
+        print("builder: ", builder)
         with self.hold_trait_notifications():
             self.process = submit(builder)
             # Set the builder parameters on the work chain

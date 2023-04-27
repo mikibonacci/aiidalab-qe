@@ -7,7 +7,6 @@ from aiida.plugins import DataFactory, WorkflowFactory
 # AiiDA Quantum ESPRESSO plugin inputs.
 from aiida_quantumespresso.common.types import RelaxType
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
-from aiidalab_qe.utils import get_entries
 
 # Data objects and work chains.
 PwRelaxWorkChain = WorkflowFactory("quantumespresso.pw.relax")
@@ -24,22 +23,41 @@ BandsData = DataFactory("core.array.bands")
 Orbital = DataFactory("core.orbital")
 
 
+# load entry points
+def get_entries(entry_point_name="aiidalab_qe_configuration"):
+    from importlib.metadata import entry_points
+
+    entries = {}
+    for entry_point in entry_points().get(entry_point_name, []):
+        entries[entry_point.name] = entry_point.load()
+
+    return entries
+
+
 class QeAppWorkChain(WorkChain):
     """WorkChain designed to calculate the requested properties in the AiiDAlab Quantum ESPRESSO app."""
 
     @classmethod
     def define(cls, spec):
         """Define the process specification."""
-        entries = get_entries("aiidalab_qe_workchain")
-        i = 1
+        entries = get_entries("aiidalab_qe_subworkchain")
         for name, entry_point in entries.items():
-            plugin_workchain = entry_point.load()
-            spec.expose_inputs(plugin_workchain, namespace=name,
-                           namespace_options={'required': False, 'populate_defaults': False,
-                                              'help': f'Inputs for the {name} plugin.'})
-            spec.exit_code(404 + 1, f'ERROR_SUB_PROCESS_FAILED_{name}',
-                       message=f'The plugin {name} WorkChain sub process failed')
-        
+            plugin_workchain = entry_point
+            spec.expose_inputs(
+                plugin_workchain,
+                namespace=name,
+                namespace_options={
+                    "required": False,
+                    "populate_defaults": False,
+                    "help": f"Inputs for the {name} plugin.",
+                },
+            )
+            spec.exit_code(
+                404 + 1,
+                f"ERROR_SUB_PROCESS_FAILED_{name}",
+                message=f"The plugin {name} WorkChain sub process failed",
+            )
+
         # yapf: disable
         super().define(spec)
         spec.input('structure', valid_type=StructureData,
@@ -181,7 +199,7 @@ class QeAppWorkChain(WorkChain):
         if "smearing_override" in overrides:
             builder.smearing_override = overrides["smearing_override"]
         # add plugin workchain
-        entries = get_entries("aiidalab_qe_workchain")
+        entries = get_entries("aiidalab_qe_subworkchain")
         for name, entry_point in entries.items():
             workchain = entry_point
             plugin = workchain.get_builder_from_protocol(
@@ -190,7 +208,6 @@ class QeAppWorkChain(WorkChain):
                 protocol=protocol,
                 **plugin_parameters.get(name, {}),
             )
-            plugin.pop("structure", None)
             setattr(builder, name, plugin)
         return builder
 
@@ -367,11 +384,14 @@ class QeAppWorkChain(WorkChain):
 
     def run_plugin(self):
         """Run the `PdosWorkChain`."""
-        entries = get_entries("aiidalab_qe_workchain")
+        entries = get_entries("aiidalab_qe_subworkchain")
         plugin_running = {}
+        self.report(f"Run plugin {entries}")
         for name, entry_point in entries.items():
-            plugin_workchain = entry_point.load()
-            inputs = AttributeDict(self.exposed_inputs(plugin_workchain, namespace="name"))
+            plugin_workchain = entry_point
+            inputs = AttributeDict(
+                self.exposed_inputs(plugin_workchain, namespace="name")
+            )
             inputs.metadata.call_link_label = name
             inputs.structure = self.ctx.current_structure
             inputs = prepare_process_inputs(plugin_workchain, inputs)
@@ -389,7 +409,7 @@ class QeAppWorkChain(WorkChain):
                 self.report(
                     f"Plugin {name} WorkChain failed with exit status {workchain.exit_status}"
                 )
-                return self.exit_codes.get(f'ERROR_SUB_PROCESS_FAILED_{name}')
+                return self.exit_codes.get(f"ERROR_SUB_PROCESS_FAILED_{name}")
 
     def results(self):
         """Add the results to the outputs."""
