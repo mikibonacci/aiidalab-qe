@@ -386,15 +386,17 @@ class QeAppWorkChain(WorkChain):
         """Run the `PdosWorkChain`."""
         entries = get_entries("aiidalab_qe_subworkchain")
         plugin_running = {}
-        self.report(f"Run plugin {entries}")
+        self.report(f"Plugins: {entries}")
         for name, entry_point in entries.items():
+            self.report(f"Run plugin : {name}")
             plugin_workchain = entry_point
             inputs = AttributeDict(
-                self.exposed_inputs(plugin_workchain, namespace="name")
+                self.exposed_inputs(plugin_workchain, namespace=name)
             )
             inputs.metadata.call_link_label = name
             inputs.structure = self.ctx.current_structure
             inputs = prepare_process_inputs(plugin_workchain, inputs)
+            self.report(f"plugin inputs: {inputs}")
             running = self.submit(plugin_workchain, **inputs)
             self.report(f"launching plugin {name} <{running.pk}>")
             plugin_running = {name: running}

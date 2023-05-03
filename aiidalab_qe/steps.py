@@ -315,7 +315,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         entries = get_entries("aiidalab_qe_configuration")
         for name, entry_point in entries.items():
             new_name = f"{name}_settings"
-            print(new_name)
             setattr(self, new_name, entry_point())
 
         self.workchain_settings = WorkChainSettings()
@@ -907,7 +906,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         }
 
         update_builder(builder, resources, self.parallelization.npools.value)
-        print("builder: ", builder)
+        # print("builder: ", builder)
         with self.hold_trait_notifications():
             self.process = submit(builder)
             # Set the builder parameters on the work chain
