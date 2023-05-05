@@ -83,35 +83,17 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         """Get the builder parameters based on the GUI inputs."""
 
         parameters = dict()
-        # add plugin specific settings
-        # TODO: add parameters
-        # Work chain settings
-        # Basic settings
-        # Advanced settings
         for name, settings in self.settings.items():
             parameters.update({name: settings.get_panel_value()})
         return parameters
-
-    def get_plugin_parameters(self):
-        """Get the builder parameters based on the plugin GUI inputs."""
-        # read plugin specific settings
-        plugin_parameters = {}
-        entries = get_entries("aiidalab_qe_configuration")
-        for name in entries:
-            settings = getattr(self.configure_step, f"{name}_settings")
-            plugin_parameters = {name: settings.get_panel_value()}
-        return plugin_parameters
 
     def set_input_parameters(self, parameters):
         """Set the inputs in the GUI based on a set of parameters."""
 
         with self.hold_trait_notifications():
-            # Work chain settings
-            self.workchain_settings.load_panel_value(parameters["workflow"])
-            self.basic_settings.load_panel_value(parameters["basic"])
-            self.advance_settings.load_panel_value(parameters["advance"])
-
-            # Advanced settings
+            for name, settings in self.settings.items():
+                if parameters.get(name, False):
+                    settings.load_panel_value(parameters[name])
 
     def _update_state(self, _=None):
         if self.previous_step_state == self.State.SUCCESS:

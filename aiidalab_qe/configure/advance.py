@@ -117,6 +117,12 @@ class AdvanceSettings(Panel):
         :param parameters: a dictionary of the values of all the widgets in the panel.
         """
         self.pseudo_family_selector.value = parameters.get("pseudo_family")
+        self.pseudo_family_selector.dft_functional.value = parameters.get(
+            "pseudo_family"
+        ).split("/")[2]
+        self.pseudo_family_selector.protocol_selection.value = parameters.get(
+            "pseudo_family"
+        ).split("/")[3]
         if parameters.get("pw") is not None:
             self.kpoints_distance.value = parameters["pw"]["kpoints_distance"]
             self.degauss.value = parameters["pw"]["parameters"]["SYSTEM"]["degauss"]
