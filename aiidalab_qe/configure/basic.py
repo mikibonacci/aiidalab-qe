@@ -26,24 +26,22 @@ class BasicSettings(Panel):
     )
 
     def __init__(self, **kwargs):
-        # SpinType: magnetic properties of material
-        self.spin_type = ipw.ToggleButtons(
-            options=[("Off", "none"), ("On", "collinear")],
-            value=DEFAULT_PARAMETERS["spin_type"],
-            style={"description_width": "initial"},
-        )
-
-        # ElectronicType: electronic properties of material
-        self.electronic_type = ipw.ToggleButtons(
-            options=[("Metal", "metal"), ("Insulator", "insulator")],
-            value=DEFAULT_PARAMETERS["electronic_type"],
-            style={"description_width": "initial"},
-        )
-
         # Work chain protocol
         self.workchain_protocol = ipw.ToggleButtons(
             options=["fast", "moderate", "precise"],
             value="moderate",
+        )
+        # SpinType: magnetic properties of material
+        self.spin_type = ipw.ToggleButtons(
+            options=[("Off", "none"), ("On", "collinear")],
+            value=DEFAULT_PARAMETERS["basic"]["spin_type"],
+            style={"description_width": "initial"},
+        )
+        # ElectronicType: electronic properties of material
+        self.electronic_type = ipw.ToggleButtons(
+            options=[("Metal", "metal"), ("Insulator", "insulator")],
+            value=DEFAULT_PARAMETERS["basic"]["electronic_type"],
+            style={"description_width": "initial"},
         )
 
         children = (

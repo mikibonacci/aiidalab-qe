@@ -30,26 +30,26 @@ def _generate_report_dict(qeapp_wc: WorkChainNode):
     builder_parameters = qeapp_wc.base.extras.get("builder_parameters", {})
 
     # Properties
-    run_relax = builder_parameters.get("relax_type") != "none"
-    run_bands = builder_parameters.get("run_bands")
-    run_pdos = builder_parameters.get("run_pdos")
+    run_relax = builder_parameters["workflow"].get("relax_type") != "none"
+    run_bands = builder_parameters["workflow"]["properties"].get("bands")
+    run_pdos = builder_parameters["workflow"]["properties"].get("pdos")
 
     yield "relaxed", run_relax
-    yield "relax_method", builder_parameters["relax_type"]
+    yield "relax_method", builder_parameters["workflow"].get("relax_type")
     yield "bands_computed", run_bands
     yield "pdos_computed", run_pdos
 
     # Material settings
-    yield "material_magnetic", builder_parameters["spin_type"]
-    yield "electronic_type", builder_parameters["electronic_type"]
+    yield "material_magnetic", builder_parameters["basic"]["spin_type"]
+    yield "electronic_type", builder_parameters["basic"]["electronic_type"]
 
     # Calculation settings
-    yield "protocol", builder_parameters["protocol"]
+    yield "protocol", builder_parameters["basic"]["protocol"]
 
     try:
-        pseudo_family = builder_parameters.get("pseudo_family", None)
+        pseudo_family = builder_parameters["advance"].get("pseudo_family", None)
         if pseudo_family is None:
-            protocol = builder_parameters.get("pseudo_family", "moderate")
+            protocol = builder_parameters["basic"].get("protocol", "moderate")
             pseudo_family = PROTOCOL_PSEUDO_MAP[protocol]
 
         yield "pseudo_family", pseudo_family
@@ -85,7 +85,7 @@ def _generate_report_dict(qeapp_wc: WorkChainNode):
     nscf_kpoints_distance = None
 
     default_params = PwBaseWorkChain.get_protocol_inputs(
-        builder_parameters["protocol"]
+        builder_parameters["basic"]["protocol"]
     )["pw"]["parameters"]["SYSTEM"]
     try:
         degauss = qeapp_wc.inputs.degauss_override.value
@@ -121,12 +121,11 @@ def _generate_report_dict(qeapp_wc: WorkChainNode):
             pw_parameters or qeapp_wc.inputs.pdos.scf.pw.parameters.get_dict()
         )
         nscf_kpoints_distance = qeapp_wc.inputs.pdos.nscf.kpoints_distance.value
-
-    energy_cutoff_wfc = round(pw_parameters["SYSTEM"]["ecutwfc"])
-    energy_cutoff_rho = round(pw_parameters["SYSTEM"]["ecutrho"])
-
-    yield "energy_cutoff_wfc", energy_cutoff_wfc
-    yield "energy_cutoff_rho", energy_cutoff_rho
+    if pw_parameters is not None:
+        energy_cutoff_wfc = round(pw_parameters["SYSTEM"]["ecutwfc"])
+        energy_cutoff_rho = round(pw_parameters["SYSTEM"]["ecutrho"])
+        yield "energy_cutoff_wfc", energy_cutoff_wfc
+        yield "energy_cutoff_rho", energy_cutoff_rho
     yield "degauss", degauss
     yield "smearing", smearing
     yield "scf_kpoints_distance", scf_kpoints_distance

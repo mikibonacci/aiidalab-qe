@@ -2,9 +2,11 @@
 # Default builder parameters for the QeAppWorkChain
 
 ## Properties
-relax_type: positions_cell
-run_bands: false
-run_pdos: false
+workflow:
+    relax_type: positions_cell
+    properties:
+        run_bands: false
+        run_pdos: false
 
 ## Codes
 dos_code: dos-7.0@localhost
@@ -12,10 +14,11 @@ projwfc_code: projwfc-7.0@localhost
 pw_code: pw-7.0@localhost
 
 ## Material settings
-spin_type: none
-electronic_type: metal
+basic:
+    spin_type: none
+    electronic_type: metal
+    protocol: moderate ## Calculation settings
 
-## Calculation settings
-protocol: moderate
-kpoints_distance_override:
-pseudo_family: SSSP/1.2/PBEsol/efficiency
+advance:
+    kpoints_distance_override:
+    pseudo_family: SSSP/1.2/PBEsol/efficiency

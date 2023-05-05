@@ -1,11 +1,11 @@
 # AiiDA imports.
 from aiida.common import AttributeDict
 from aiida.engine import ToContext, WorkChain, if_
-from aiida.orm import CalcJobNode, WorkChainNode
+from aiida.orm import CalcJobNode, WorkChainNode, load_code
 from aiida.plugins import DataFactory, WorkflowFactory
 
 # AiiDA Quantum ESPRESSO plugin inputs.
-from aiida_quantumespresso.common.types import RelaxType
+from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
 from aiida_quantumespresso.utils.mapping import prepare_process_inputs
 
 # Data objects and work chains.
@@ -125,90 +125,85 @@ class QeAppWorkChain(WorkChain):
     def get_builder_from_protocol(
         cls,
         structure,
-        pw_code,
-        dos_code=None,
-        projwfc_code=None,
-        protocol=None,
-        overrides=None,
-        relax_type=RelaxType.NONE,
-        pseudo_family=None,
-        plugin_parameters=None,
-        **kwargs,
+        parameters=None,
     ):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
-        overrides = overrides or {}
         builder = cls.get_builder()
         builder.structure = structure
-
-        relax_overrides = overrides.get("relax", {})
-        if pseudo_family is not None:
-            relax_overrides.setdefault("base", {})["pseudo_family"] = pseudo_family
-
-        relax = PwRelaxWorkChain.get_builder_from_protocol(
-            code=pw_code,
-            structure=structure,
-            protocol=protocol,
-            overrides=relax_overrides,
-            relax_type=relax_type,
-            **kwargs,
+        protocol = parameters["basic"].pop("protocol", "moderate")
+        codes = parameters.pop("codes", {})
+        #
+        parameters["workflow"]["relax_type"] = RelaxType(
+            parameters["workflow"]["relax_type"]
         )
-        relax.pop("structure", None)
-        relax.pop("clean_workdir", None)
-        relax.pop("base_final_scf", None)
-        builder.relax = relax
-
-        bands_overrides = overrides.get("bands", {})
-        if pseudo_family is not None:
-            bands_overrides.setdefault("scf", {})["pseudo_family"] = pseudo_family
-            bands_overrides.setdefault("bands", {})["pseudo_family"] = pseudo_family
-        bands = PwBandsWorkChain.get_builder_from_protocol(
-            code=pw_code,
-            structure=structure,
-            protocol=protocol,
-            overrides=bands_overrides,
-            **kwargs,
+        parameters["basic"]["electronic_type"] = ElectronicType(
+            parameters["basic"]["electronic_type"]
         )
-        bands.pop("relax")
-        bands.pop("structure", None)
-        bands.pop("clean_workdir", None)
-        builder.bands = bands
-
-        if dos_code is not None and projwfc_code is not None:
-            pdos_overrides = overrides.get("pdos", {})
-            if pseudo_family is not None:
-                pdos_overrides.setdefault("scf", {})["pseudo_family"] = pseudo_family
-                pdos_overrides.setdefault("nscf", {})["pseudo_family"] = pseudo_family
+        parameters["basic"]["spin_type"] = SpinType(parameters["basic"]["spin_type"])
+        # Relax
+        if parameters["workflow"]["relax_type"] is not RelaxType.NONE:
+            relax_parameters, relax_overrides = cls.get_relax_parameters(parameters)
+            relax = PwRelaxWorkChain.get_builder_from_protocol(
+                code=load_code(codes.get("pw_code", None)),
+                structure=structure,
+                protocol=protocol,
+                overrides=relax_overrides,
+                **relax_parameters,
+            )
+            relax.pop("structure", None)
+            relax.pop("clean_workdir", None)
+            relax.pop("base_final_scf", None)
+            builder.relax = relax
+        else:
+            builder.pop("relax", None)
+        # Bands
+        if parameters["workflow"]["properties"]["bands"]:
+            bands_parameters, bands_overrides = cls.get_bands_parameters(parameters)
+            bands = PwBandsWorkChain.get_builder_from_protocol(
+                code=load_code(codes.get("pw_code", None)),
+                structure=structure,
+                protocol=protocol,
+                overrides=bands_overrides,
+                **bands_parameters,
+            )
+            bands.pop("relax")
+            bands.pop("structure", None)
+            bands.pop("clean_workdir", None)
+            builder.bands = bands
+        else:
+            builder.pop("bands", None)
+        # PDOS
+        if parameters["workflow"]["properties"]["pdos"]:
+            pdos_parameters, pdos_overrides = cls.get_pdos_parameters(parameters)
             pdos = PdosWorkChain.get_builder_from_protocol(
-                pw_code=pw_code,
-                dos_code=dos_code,
-                projwfc_code=projwfc_code,
+                pw_code=load_code(codes.get("pw_code", None)),
+                dos_code=load_code(codes.get("dos_code", None)),
+                projwfc_code=load_code(codes.get("projwfc_code", None)),
                 structure=structure,
                 protocol=protocol,
                 overrides=pdos_overrides,
-                **kwargs,
+                **pdos_parameters,
             )
             pdos.pop("structure", None)
             pdos.pop("clean_workdir", None)
             builder.pdos = pdos
+        else:
+            builder.pop("pdos", None)
 
-        builder.clean_workdir = overrides.get("clean_workdir", Bool(False))
-        if "kpoints_distance_override" in overrides:
-            builder.kpoints_distance_override = overrides["kpoints_distance_override"]
-        if "degauss_override" in overrides:
-            builder.degauss_override = overrides["degauss_override"]
-        if "smearing_override" in overrides:
-            builder.smearing_override = overrides["smearing_override"]
+        # builder.clean_workdir = overrides.get("clean_workdir", Bool(False))
         # add plugin workchain
         entries = get_entries("aiidalab_qe_subworkchain")
         for name, entry_point in entries.items():
-            workchain = entry_point
-            plugin = workchain.get_builder_from_protocol(
-                pw_code=pw_code,
-                structure=structure,
-                protocol=protocol,
-                **plugin_parameters.get(name, {}),
-            )
-            setattr(builder, name, plugin)
+            if parameters["workflow"]["properties"][name]:
+                workchain = entry_point
+                plugin = workchain.get_builder_from_protocol(
+                    codes=codes,
+                    structure=structure,
+                    parameters=parameters,
+                )
+                setattr(builder, name, plugin)
+            else:
+                builder.pop(name, None)
         return builder
 
     def setup(self):
@@ -216,6 +211,45 @@ class QeAppWorkChain(WorkChain):
         self.ctx.current_structure = self.inputs.structure
         self.ctx.current_number_of_bands = None
         self.ctx.scf_parent_folder = None
+
+    @classmethod
+    def get_relax_parameters(cls, parameters):
+        # developer should get the plugin parameters and override from the parameters
+        new_parameters = parameters["basic"]
+        pw = parameters["advance"].get("pw", {})
+        pw["pseudo_family"] = parameters["advance"].get("pseudo_family", None)
+        overrides = {
+            "base": pw,
+            "base_final_scf": pw,
+        }
+
+        return new_parameters, overrides
+
+    @classmethod
+    def get_bands_parameters(cls, parameters):
+        # developer should get the plugin parameters and override from the parameters
+        new_parameters = parameters["basic"]
+        pw = parameters["advance"].get("pw", {})
+        pw["pseudo_family"] = parameters["advance"].get("pseudo_family", None)
+        overrides = {
+            "scf": pw,
+            "bands": pw,
+        }
+
+        return new_parameters, overrides
+
+    @classmethod
+    def get_pdos_parameters(cls, parameters):
+        # developer should get the plugin parameters and override from the parameters
+        new_parameters = parameters["basic"]
+        pw = parameters["advance"].get("pw", {})
+        pw["pseudo_family"] = parameters["advance"].get("pseudo_family", None)
+        overrides = {
+            "scf": pw,
+            "bands": pw,
+        }
+
+        return new_parameters, overrides
 
     def should_run_relax(self):
         """Check if the geometry of the input structure should be optimized."""
@@ -226,37 +260,6 @@ class QeAppWorkChain(WorkChain):
         inputs = AttributeDict(self.exposed_inputs(PwRelaxWorkChain, namespace="relax"))
         inputs.metadata.call_link_label = "relax"
         inputs.structure = self.ctx.current_structure
-
-        if "kpoints_distance_override" in self.inputs:
-            inputs.base.kpoints_distance = self.inputs.kpoints_distance_override
-            if "base_scf" in inputs:
-                inputs.base_scf.kpoints_distance = self.inputs.kpoints_distance_override
-
-        inputs.base.pw.parameters = inputs.base.pw.parameters.get_dict()
-        if "degauss_override" in self.inputs:
-            inputs.base.pw.parameters.setdefault("SYSTEM", {})[
-                "degauss"
-            ] = self.inputs.degauss_override.value
-
-            if "base_scf" in inputs:
-                inputs.base_scf_params.pw.parameters = (
-                    inputs.base_scf_params.pw.parameters.get_dict()
-                )
-                inputs.base_scf_params.pw.parameters.setdefault("SYSTEM", {})[
-                    "degauss"
-                ] = self.inputs.degauss_override.value
-        if "smearing_override" in self.inputs:
-            inputs.base.pw.parameters.setdefault("SYSTEM", {})[
-                "smearing"
-            ] = self.inputs.smearing_override.value
-
-            if "base_scf" in inputs:
-                inputs.base_scf_params.pw.parameters = (
-                    inputs.base_scf_params.pw.parameters.get_dict()
-                )
-                inputs.base_scf_params.pw.parameters.setdefault("SYSTEM", {})[
-                    "smearing"
-                ] = self.inputs.smearing_override.value
 
         inputs = prepare_process_inputs(PwRelaxWorkChain, inputs)
         running = self.submit(PwRelaxWorkChain, **inputs)
@@ -298,18 +301,6 @@ class QeAppWorkChain(WorkChain):
                 "nbnd", self.ctx.current_number_of_bands
             )
 
-        if "kpoints_distance_override" in self.inputs:
-            inputs.scf.kpoints_distance = self.inputs.kpoints_distance_override
-
-        if "degauss_override" in self.inputs:
-            inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
-                "degauss"
-            ] = self.inputs.degauss_override.value
-        if "smearing_override" in self.inputs:
-            inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
-                "smearing"
-            ] = self.inputs.smearing_override.value
-
         inputs = prepare_process_inputs(PwBandsWorkChain, inputs)
         running = self.submit(PwBandsWorkChain, **inputs)
 
@@ -350,20 +341,6 @@ class QeAppWorkChain(WorkChain):
         if self.ctx.scf_parent_folder:
             inputs.pop("scf")
             inputs.nscf.pw.parent_folder = self.ctx.scf_parent_folder
-        else:
-            if "kpoints_distance_override" in self.inputs:
-                inputs.scf.kpoints_distance = self.inputs.kpoints_distance_override
-
-            inputs.scf.pw.parameters = inputs.scf.pw.parameters.get_dict()
-            if "degauss_override" in self.inputs:
-                inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
-                    "degauss"
-                ] = self.inputs.degauss_override.value
-
-            if "smearing_override" in self.inputs:
-                inputs.scf.pw.parameters.setdefault("SYSTEM", {})[
-                    "smearing"
-                ] = self.inputs.smearing_override.value
 
         inputs = prepare_process_inputs(PdosWorkChain, inputs)
         running = self.submit(PdosWorkChain, **inputs)
@@ -382,12 +359,18 @@ class QeAppWorkChain(WorkChain):
             )
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_PDOS
 
+    def should_run_plugin(self, name):
+        return name in self.inputs
+
     def run_plugin(self):
         """Run the `PdosWorkChain`."""
         entries = get_entries("aiidalab_qe_subworkchain")
+        self.ctx.plugin_entries = entries
         plugin_running = {}
         self.report(f"Plugins: {entries}")
         for name, entry_point in entries.items():
+            if not self.should_run_plugin(name):
+                continue
             self.report(f"Run plugin : {name}")
             plugin_workchain = entry_point
             inputs = AttributeDict(
@@ -401,12 +384,14 @@ class QeAppWorkChain(WorkChain):
             self.report(f"launching plugin {name} <{running.pk}>")
             plugin_running = {name: running}
 
-        return ToContext(workchain_plugin=plugin_running)
+        return ToContext(**plugin_running)
 
     def inspect_plugin(self):
         """Verify that the `pluginWorkChain` finished successfully."""
-        workchains = self.ctx.workchain_plugin
-        for name, workchain in workchains.items():
+        for name in self.ctx.plugin_entries:
+            if not self.should_run_plugin(name):
+                continue
+            workchain = self.ctx[name]
             if not workchain.is_finished_ok:
                 self.report(
                     f"Plugin {name} WorkChain failed with exit status {workchain.exit_status}"

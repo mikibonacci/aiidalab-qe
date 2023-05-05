@@ -49,7 +49,7 @@ class PseudoFamilySelector(ipw.VBox):
     disabled = traitlets.Bool()
 
     value = traitlets.Unicode(
-        default_value=DEFAULT_PARAMETERS["pseudo_family"],
+        default_value=DEFAULT_PARAMETERS["advance"]["pseudo_family"],
     )
 
     def __init__(self, **kwargs):
@@ -73,14 +73,14 @@ class PseudoFamilySelector(ipw.VBox):
         # Choose the DFT functional
         self.dft_functional = ipw.Dropdown(
             options=["PBE", "PBEsol"],
-            value=DEFAULT_PARAMETERS["pseudo_family"].split("/")[2],
+            value=DEFAULT_PARAMETERS["advance"]["pseudo_family"].split("/")[2],
             style={"description_width": "initial"},
         )
         self.dft_functional.observe(self.set_value_trait, "value")
 
         self.protocol_selection = ipw.ToggleButtons(
             options=["efficiency", "precision"],
-            value=DEFAULT_PARAMETERS["pseudo_family"].split("/")[3],
+            value=DEFAULT_PARAMETERS["advance"]["pseudo_family"].split("/")[3],
             layout=ipw.Layout(max_width="80%"),
         )
         self.protocol_selection.observe(self.set_value_trait, "value")
@@ -119,7 +119,7 @@ class PseudoFamilySelector(ipw.VBox):
 
     def set_value_trait(self, _=None):
         self.value = (
-            DEFAULT_PARAMETERS["pseudo_family"]
+            DEFAULT_PARAMETERS["advance"]["pseudo_family"]
             if not self.set_pseudo_family.value
             else f"SSSP/1.2/{self.dft_functional.value}/{self.protocol_selection.value}"
         )

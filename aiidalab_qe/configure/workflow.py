@@ -68,7 +68,7 @@ class WorkChainSettings(ipw.VBox):
 
         :return: a dictionary of the values of all the widgets in the panel.
         """
-        parameters = {"relax": self.relax_type.value, "properties": {}}
+        parameters = {"relax_type": self.relax_type.value, "properties": {}}
         for name, property in self.properties.items():
             parameters["properties"][name] = property.run.value
         return parameters
@@ -78,7 +78,7 @@ class WorkChainSettings(ipw.VBox):
 
         :param parameters: a dictionary of the values of all the widgets in the panel.
         """
-        self.relax_type.value = parameters.get("relax", "positions_cell")
+        self.relax_type.value = parameters.get("relax_type", "positions_cell")
         for key, value in parameters.get("properties", {}).items():
             if key in self.properties:
                 self.properties[key].run.value = value

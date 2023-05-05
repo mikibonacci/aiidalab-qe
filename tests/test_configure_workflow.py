@@ -12,3 +12,12 @@ def test_workchain_settings():
     wcs.load_panel_value(parameters)
     assert wcs.relax_type.value == "positions"
     assert wcs.properties["bands"].run.value is True
+
+
+def test_get_parameters():
+    from aiidalab_qe.steps import ConfigureQeAppWorkChainStep
+
+    sc = ConfigureQeAppWorkChainStep()
+    parameters = sc.get_input_parameters()
+    print(parameters)
+    assert "basic" in parameters

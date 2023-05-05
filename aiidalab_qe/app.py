@@ -1,4 +1,5 @@
 import ipywidgets as ipw
+from aiida.orm import load_node
 from aiidalab_widgets_base import (
     BasicCellEditor,
     BasicStructureEditor,
@@ -13,7 +14,6 @@ from aiidalab_widgets_base import (
 
 from aiidalab_qe.process import WorkChainSelector
 from aiidalab_qe.steps import (
-    ConfigureQeAppWorkChainStep,
     SubmitQeAppWorkChainStep,
     ViewQeAppWorkChainStatusAndResultsStep,
 )
@@ -43,9 +43,6 @@ class QEApp:
         structure_selection_step = StructureSelectionStep(
             manager=structure_manager_widget, auto_advance=True
         )
-        configure_qe_app_work_chain_step = ConfigureQeAppWorkChainStep(
-            auto_advance=True
-        )
         submit_qe_app_work_chain_step = SubmitQeAppWorkChainStep(auto_advance=True)
         view_qe_app_work_chain_status_and_results_step = (
             ViewQeAppWorkChainStatusAndResultsStep()
@@ -54,28 +51,27 @@ class QEApp:
         # Link the application steps
         ipw.dlink(
             (structure_selection_step, "state"),
-            (configure_qe_app_work_chain_step, "previous_step_state"),
+            (submit_qe_app_work_chain_step.configure_step, "previous_step_state"),
         )
         ipw.dlink(
             (structure_selection_step, "confirmed_structure"),
             (submit_qe_app_work_chain_step, "input_structure"),
         )
-        ipw.dlink(
-            (configure_qe_app_work_chain_step, "state"),
-            (submit_qe_app_work_chain_step, "previous_step_state"),
-        )
 
         ipw.dlink(
             (submit_qe_app_work_chain_step, "process"),
             (view_qe_app_work_chain_status_and_results_step, "process"),
-            transform=lambda node: node if node is not None else None,
+            transform=lambda node: node.uuid if node is not None else None,
         )
+
+        # here I add the configure step to the submit step, so that the submit step can access the configuration parameters
+        # maybe we can find a better way to do this
 
         # Add the application steps to the application
         self.steps = WizardAppWidget(
             steps=[
                 ("Select structure", structure_selection_step),
-                ("Configure workflow", configure_qe_app_work_chain_step),
+                ("Configure workflow", submit_qe_app_work_chain_step.configure_step),
                 ("Choose computational resources", submit_qe_app_work_chain_step),
                 ("Status & Results", view_qe_app_work_chain_status_and_results_step),
             ]
@@ -96,9 +92,6 @@ class QEApp:
         self.work_chain_selector = WorkChainSelector(layout=ipw.Layout(width="auto"))
 
         def _observe_process_selection(change):
-            from aiidalab_restapi.api import restapi_get_inputs_by_pk
-            from aiidalab_restapi.utils import create_structure
-
             if change["old"] == change["new"]:
                 return
             pk = change["new"]
@@ -106,23 +99,26 @@ class QEApp:
                 self.steps.reset()
                 self.steps.selected_index = 0
             else:
-                inputs = restapi_get_inputs_by_pk(pk)
-                structure = create_structure(inputs["structure"])
+                process = load_node(pk)
                 with structure_manager_widget.hold_sync():
                     with structure_selection_step.hold_sync():
                         self.steps.selected_index = 3
-                        structure_manager_widget.input_structure = structure
-                        structure_selection_step.structure = structure
-                        structure_selection_step.confirmed_structure = structure
-                        configure_qe_app_work_chain_step.state = (
+                        structure_manager_widget.input_structure = (
+                            process.inputs.structure
+                        )
+                        structure_selection_step.structure = process.inputs.structure
+                        structure_selection_step.confirmed_structure = (
+                            process.inputs.structure
+                        )
+                        submit_qe_app_work_chain_step.configure_step.state = (
                             WizardAppWidgetStep.State.SUCCESS
                         )
-                        submit_qe_app_work_chain_step.process = pk
+                        submit_qe_app_work_chain_step.process = process
 
         self.work_chain_selector.observe(_observe_process_selection, "value")
         ipw.dlink(
             (submit_qe_app_work_chain_step, "process"),
             (self.work_chain_selector, "value"),
-            transform=lambda node: None if node is None else node,
+            transform=lambda node: None if node is None else node.pk,
         )
         self.work_chain = ipw.VBox(children=[self.work_chain_selector, self.steps])

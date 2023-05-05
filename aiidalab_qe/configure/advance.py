@@ -96,9 +96,19 @@ class AdvanceSettings(Panel):
 
         :return: a dictionary of the values of all the widgets in the panel.
         """
-        parameters = {"relax": self.relax_type.value, "properties": {}}
-        for name, property in self.properties.items():
-            parameters["properties"][name] = property.run.value
+
+        parameters = {
+            "pseudo_family": self.pseudo_family_selector.value,
+            "pw": {
+                "kpoints_distance": self.kpoints_distance.value,
+                "parameters": {
+                    "SYSTEM": {
+                        "degauss": self.degauss.value,
+                        "smearing": self.smearing.value,
+                    }
+                },
+            },
+        }
         return parameters
 
     def load_panel_value(self, parameters):
@@ -106,7 +116,8 @@ class AdvanceSettings(Panel):
 
         :param parameters: a dictionary of the values of all the widgets in the panel.
         """
-        self.relax_type.value = parameters.get("relax", "positions_cell")
-        for key, value in parameters.get("properties", {}).items():
-            if key in self.properties:
-                self.properties[key].run.value = value
+        self.pseudo_family_selector.value = parameters.get("pseudo_family")
+        if parameters.get("pw") is not None:
+            self.kpoints_distance.value = parameters["pw"]["kpoints_distance"]
+            self.degauss.value = parameters["pw"]["parameters"]["SYSTEM"]["degauss"]
+            self.smearing.value = parameters["pw"]["parameters"]["SYSTEM"]["smearing"]

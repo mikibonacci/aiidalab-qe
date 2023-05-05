@@ -41,6 +41,7 @@ def test_steps():
     # step 2
     s2 = app.steps.steps[1][1]
     s2.workchain_settings.relax_type.value = "none"
+    # s2.workchain_settings.properties["abc"].run.value = True
     s2.basic_settings.workchain_protocol.value = "fast"
     s2.confirm()
     assert s2.state == was.State.SUCCESS
@@ -51,5 +52,5 @@ def test_steps():
     assert s3.state == s3.State.CONFIGURED
     s3.resources_config.num_cpus.value = 4
     assert s3.resources_config.num_cpus.value == 4
-    # s3.submit()
-    # assert s3.state == was.State.SUCCESS
+    s3.submit()
+    assert s3.state == was.State.SUCCESS

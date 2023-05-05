@@ -13,7 +13,6 @@ from aiida.common import NotExistent
 from aiida.engine import ProcessBuilderNamespace, ProcessState, submit
 from aiida.orm import WorkChainNode, load_code, load_node
 from aiida.plugins import DataFactory
-from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
 from aiidalab_widgets_base import (
     AiidaNodeViewWidget,
     ComputationalResourcesWidget,
@@ -23,12 +22,10 @@ from aiidalab_widgets_base import (
 )
 from IPython.display import display
 
-from aiidalab_qe.configure.basic import BasicSettings
-from aiidalab_qe.configure.workflow import WorkChainSettings
+from aiidalab_qe.configure.configure import ConfigureQeAppWorkChainStep
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.setup_codes import QESetupWidget
 from aiidalab_qe.sssp import SSSPInstallWidget
-from aiidalab_qe.utils import get_entries
 from aiidalab_qe.widgets import ParallelizationSettings, ResourceSelectionWidget
 from aiidalab_qe_workchain import QeAppWorkChain
 
@@ -36,105 +33,6 @@ StructureData = DataFactory("core.structure")
 Float = DataFactory("core.float")
 Dict = DataFactory("core.dict")
 Str = DataFactory("core.str")
-
-
-class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
-    confirmed = traitlets.Bool()
-    previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
-    workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
-    basic_settings = traitlets.Instance(BasicSettings, allow_none=True)
-
-    def __init__(self, **kwargs):
-        # add plugin specific settings
-        entries = get_entries("aiidalab_qe_configuration")
-        for name, entry_point in entries.items():
-            new_name = f"{name}_settings"
-            setattr(self, new_name, entry_point())
-
-        self.workchain_settings = WorkChainSettings()
-        self.basic_settings = BasicSettings()
-        self.workchain_settings.relax_type.observe(self._update_state, "value")
-
-        self.tab = ipw.Tab(
-            children=[
-                self.workchain_settings,
-                self.basic_settings,
-            ],
-            layout=ipw.Layout(min_height="250px"),
-        )
-
-        self.tab.set_title(0, "Workflow")
-        self.tab.set_title(1, "Basic settings")
-
-        # add plugin specific settings
-        self.settings = {
-            "workflow": self.workchain_settings,
-            "basic": self.basic_settings,
-        }
-        entries = get_entries("aiidalab_qe_configuration")
-        for name, entry_point in entries.items():
-            self.settings[name] = entry_point()
-            self.tab.children += (self.settings[name],)
-            self.tab.set_title(len(self.tab.children) - 1, name)
-
-        self._submission_blocker_messages = ipw.HTML()
-
-        self.confirm_button = ipw.Button(
-            description="Confirm",
-            tooltip="Confirm the currently selected settings and go to the next step.",
-            button_style="success",
-            icon="check-circle",
-            disabled=True,
-            layout=ipw.Layout(width="auto"),
-        )
-
-        self.confirm_button.on_click(self.confirm)
-
-        super().__init__(
-            children=[
-                self.tab,
-                self._submission_blocker_messages,
-                self.confirm_button,
-            ],
-            **kwargs,
-        )
-
-    @traitlets.observe("previous_step_state")
-    def _observe_previous_step_state(self, change):
-        self._update_state()
-
-    def set_input_parameters(self, parameters):
-        """Set the inputs in the GUI based on a set of parameters."""
-
-        with self.hold_trait_notifications():
-            # Work chain settings
-            self.workchain_settings.relax_type.value = parameters["relax_type"]
-
-            # Advanced settings
-
-    def _update_state(self, _=None):
-        if self.previous_step_state == self.State.SUCCESS:
-            self.confirm_button.disabled = False
-            self._submission_blocker_messages.value = ""
-            self.state = self.State.CONFIGURED
-        elif self.previous_step_state == self.State.FAIL:
-            self.state = self.State.FAIL
-        else:
-            self.confirm_button.disabled = True
-            self.state = self.State.INIT
-            self.set_input_parameters(DEFAULT_PARAMETERS)
-
-    def confirm(self, _=None):
-        self.confirm_button.disabled = False
-        self.state = self.State.SUCCESS
-
-    @traitlets.default("state")
-    def _default_state(self):
-        return self.State.INIT
-
-    def reset(self):
-        with self.hold_trait_notifications():
-            self.set_input_parameters(DEFAULT_PARAMETERS)
 
 
 class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
@@ -169,6 +67,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     _submission_blockers = traitlets.List(traitlets.Unicode)
 
     def __init__(self, **kwargs):
+        # this configure_step will be overwritten by the ConfigureQeAppWorkChainStep in the app
+        self.configure_step = ConfigureQeAppWorkChainStep(auto_advance=True)
         self.message_area = ipw.Output()
         self._submission_blocker_messages = ipw.HTML()
 
@@ -224,6 +124,11 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.qe_setup_status.observe(self._update_state, "busy")
         self.qe_setup_status.observe(self._toggle_install_widgets, "installed")
         self.qe_setup_status.observe(self._auto_select_code, "installed")
+        #
+        ipw.dlink(
+            (self.configure_step, "state"),
+            (self, "previous_step_state"),
+        )
 
         super().__init__(
             children=[
@@ -264,7 +169,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         # No code selected for pdos (this is ignored while the setup process is running).
         if (
-            self.workchain_settings.pdos_run.value
+            self.configure_step.settings["workflow"].properties["pdos"].run.value
             and (self.dos_code.value is None or self.projwfc_code.value is None)
             and not self.qe_setup_status.busy
         ):
@@ -275,7 +180,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             yield "The SSSP library is not installed."
 
         if (
-            self.workchain_settings.pdos_run.value
+            self.configure_step.settings["workflow"].properties["pdos"].run.value
             and not any(
                 [
                     self.pw_code.value is None,
@@ -322,6 +227,31 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         self._submission_blockers = []
         self.state = self.state.CONFIGURED
+
+    def get_selected_codes(self):
+        parameters = dict(
+            pw_code=self.pw_code.value,
+            dos_code=self.dos_code.value,
+            projwfc_code=self.projwfc_code.value,
+        )
+        return parameters
+
+    def set_selected_codes(self, parameters):
+        """Set the inputs in the GUI based on a set of parameters."""
+
+        # Codes
+        def _get_code_uuid(code):
+            if code is not None:
+                try:
+                    return load_code(code).uuid
+                except NotExistent:
+                    return None
+
+        with self.hold_trait_notifications():
+            # Codes
+            self.pw_code.value = _get_code_uuid(parameters["pw_code"])
+            self.dos_code.value = _get_code_uuid(parameters["dos_code"])
+            self.projwfc_code.value = _get_code_uuid(parameters["projwfc_code"])
 
     def _toggle_install_widgets(self, change):
         if change["new"]:
@@ -431,7 +361,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     @traitlets.observe("previous_step_state")
     def _observe_input_structure(self, _):
         self._update_state()
-        self.set_pdos_status()
 
     @traitlets.observe("process")
     def _observe_process(self, change):
@@ -443,68 +372,17 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                     "builder_parameters", None
                 )
                 if builder_parameters is not None:
-                    self.set_selected_codes(builder_parameters)
+                    self.set_selected_codes(builder_parameters["codes"])
+                    self.configure_step.set_input_parameters(builder_parameters)
             self._update_state()
 
     def _on_submit_button_clicked(self, _):
         self.submit_button.disabled = True
         self.submit()
 
-    def get_input_parameters(self):
-        """Get the builder parameters based on the GUI inputs."""
-
-        parameters = dict(
-            # TODO: add parameters
-            # Work chain settings
-            # Basic settings
-            # Advanced settings
-            # Codes
-            pw_code=self.pw_code.value,
-            dos_code=self.dos_code.value,
-            projwfc_code=self.projwfc_code.value,
-            # Advanced settings
-            pseudo_family=self.pseudo_family_selector.value,
-        )
-        # add plugin specific settings
-
-        return parameters
-
-    def get_plugin_parameters(self):
-        """Get the builder parameters based on the plugin GUI inputs."""
-        # read plugin specific settings
-        plugin_parameters = {}
-        entries = get_entries("aiidalab_qe_configuration")
-        for name in entries:
-            settings = getattr(self.configure_step, f"{name}_settings")
-            plugin_parameters = {name: settings.get_panel_value()}
-        return plugin_parameters
-
-    def set_selected_codes(self, parameters):
-        """Set the inputs in the GUI based on a set of parameters."""
-
-        # Codes
-        def _get_code_uuid(code):
-            if code is not None:
-                try:
-                    return load_code(code).uuid
-                except NotExistent:
-                    return None
-
-        with self.hold_trait_notifications():
-            # Codes
-            self.pw_code.value = _get_code_uuid(parameters["pw_code"])
-            self.dos_code.value = _get_code_uuid(parameters["dos_code"])
-            self.projwfc_code.value = _get_code_uuid(parameters["projwfc_code"])
-
-    def set_pdos_status(self):
-        if self.workchain_settings.pdos_run.value:
-            self.dos_code.code_select_dropdown.disabled = False
-            self.projwfc_code.code_select_dropdown.disabled = False
-        else:
-            self.dos_code.code_select_dropdown.disabled = True
-            self.projwfc_code.code_select_dropdown.disabled = True
-
     def submit(self, _=None):
+        from copy import deepcopy
+
         def update_builder(buildy, resources, npools):
             """Update the resources and parallelization of the ``QeAppWorkChain`` builder."""
             for k, v in buildy.items():
@@ -530,47 +408,13 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                         update_builder(v, resources, npools)
 
         assert self.input_structure is not None
-        parameters = self.get_input_parameters()
-        plugin_parameters = self.get_plugin_parameters()
+        parameters = self.configure_step.get_input_parameters()
+        parameters["codes"] = self.get_selected_codes()
 
         builder = QeAppWorkChain.get_builder_from_protocol(
             structure=self.input_structure,
-            pw_code=load_code(parameters["pw_code"]),
-            dos_code=load_code(parameters["dos_code"]),
-            projwfc_code=load_code(parameters["projwfc_code"]),
-            protocol=parameters["protocol"],
-            pseudo_family=parameters["pseudo_family"],
-            relax_type=RelaxType(parameters["relax_type"]),
-            spin_type=SpinType(parameters["spin_type"]),
-            electronic_type=ElectronicType(parameters["electronic_type"]),
-            plugin_parameters=plugin_parameters,
+            parameters=deepcopy(parameters),
         )
-
-        if "kpoints_distance_override" in parameters:
-            builder.kpoints_distance_override = Float(
-                parameters["kpoints_distance_override"]
-            )
-        if "degauss_override" in parameters:
-            builder.degauss_override = Float(parameters["degauss_override"])
-        if "smearing_override" in parameters:
-            builder.smearing_override = Str(parameters["smearing_override"])
-
-        # skip relax sub-workflow only when RelaxType is NONE and has property calculated.
-        # we pop the namespace `relax` from build so the subworkchain will never
-        # been touched. Otherwise it will run a unnecessary SCF calculation before the bands/pdos
-        # sub-workchain where the SCF calculation will be run inside.
-        # This potentially increase the complexibility of the logic report widget,
-        # we need to refactoring the QeAppWorkChain and clear the logic here.
-        if RelaxType(parameters["relax_type"]) is RelaxType.NONE and (
-            parameters["run_bands"] or parameters["run_pdos"]
-        ):
-            builder.pop("relax")
-
-        if not parameters.get("run_bands", False):
-            builder.pop("bands")
-
-        if not parameters.get("run_pdos", False):
-            builder.pop("pdos")
 
         resources = {
             "num_machines": self.resources_config.num_nodes.value,
@@ -578,7 +422,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         }
 
         update_builder(builder, resources, self.parallelization.npools.value)
-        # print("builder: ", builder)
         with self.hold_trait_notifications():
             self.process = submit(builder)
             # Set the builder parameters on the work chain
