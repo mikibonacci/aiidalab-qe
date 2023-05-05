@@ -138,6 +138,7 @@ class QeAppWorkChain(WorkChain):
         relax_type=RelaxType.NONE,
         pseudo_family=None,
         pseudos=None,
+        run_xps=False,
         **kwargs,
     ):
         from aiida.orm import Group
@@ -234,30 +235,30 @@ class QeAppWorkChain(WorkChain):
             core_hole_treatments[element] = core_hole_treatment
         # binding energy
         calc_binding_energy = xps_overrides.pop("calc_binding_energy", False)
-        if calc_binding_energy:
-            correction_energies = xps_overrides.pop("correction_energies", {})
+        correction_energies = xps_overrides.pop("correction_energies", {})
         # TODO should we override the cutoff_wfc, cutoff_rho by the new pseudo?
         structure_preparation_settings = xps_overrides.pop(
             "structure_preparation_settings", Dict({})
         )
-        xps = XpsWorkChain.get_builder_from_protocol(
-            code=pw_code,
-            structure=structure,
-            pseudos=pseudos,
-            protocol=protocol,
-            elements_list=elements_list,
-            calc_binding_energy=Bool(calc_binding_energy),
-            correction_energies=Dict(correction_energies),
-            core_hole_treatments=core_hole_treatments,
-            overrides=xps_overrides,
-            structure_preparation_settings=structure_preparation_settings,
-            **kwargs,
-        )
+        if run_xps:
+            xps = XpsWorkChain.get_builder_from_protocol(
+                code=pw_code,
+                structure=structure,
+                pseudos=pseudos,
+                protocol=protocol,
+                elements_list=elements_list,
+                calc_binding_energy=Bool(calc_binding_energy),
+                correction_energies=Dict(correction_energies),
+                core_hole_treatments=core_hole_treatments,
+                overrides=xps_overrides,
+                structure_preparation_settings=structure_preparation_settings,
+                **kwargs,
+            )
 
-        xps.pop("relax")
-        # xps.pop("structure", None)
-        xps.pop("clean_workdir", None)
-        builder.xps = xps
+            xps.pop("relax")
+            # xps.pop("structure", None)
+            xps.pop("clean_workdir", None)
+            builder.xps = xps
 
         # xas
         if xspectra_code is not None:
@@ -294,7 +295,7 @@ class QeAppWorkChain(WorkChain):
                 **kwargs,
             )
             # xspectra.pop("structure", None)
-            print(xspectra)
+            # print(xspectra)
             xspectra.pop("clean_workdir", None)
             xspectra.pop("relax", None)
             builder.xspectra = xspectra

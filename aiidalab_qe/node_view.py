@@ -793,6 +793,12 @@ class WorkChainViewer(ipw.VBox):
     def _show_xps(self):
         import plotly.graph_objects as go
 
+        voigt_profile_help = ipw.HTML(
+            """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
+        The Voigt function:
+        </div>"""
+        )
+
         spectra_type = ipw.ToggleButtons(
             options=[
                 ("Chemical shift", "chemical_shift"),
@@ -804,7 +810,7 @@ class WorkChainViewer(ipw.VBox):
             value=0.3,
             min=0.1,
             max=1,
-            description="Gamma",
+            description="γ",
             disabled=False,
             style={"description_width": "initial"},
         )
@@ -812,7 +818,7 @@ class WorkChainViewer(ipw.VBox):
             value=0.3,
             min=0.1,
             max=1,
-            description="Sigma",
+            description="σ",
             disabled=False,
             style={"description_width": "initial"},
         )
@@ -826,7 +832,6 @@ class WorkChainViewer(ipw.VBox):
             children=[
                 gamma,
                 sigma,
-                fill,
             ]
         )
         # get data
@@ -844,7 +849,7 @@ class WorkChainViewer(ipw.VBox):
                 barmode="overlay",
             )
         )
-        g.layout.xaxis.title = "Chemical shift"
+        g.layout.xaxis.title = "Chemical shift (eV)"
         g.layout.xaxis.autorange = "reversed"
         #
         spectra = xps_spectra_broadening(
@@ -888,15 +893,27 @@ class WorkChainViewer(ipw.VBox):
         gamma.observe(response, names="value")
         sigma.observe(response, names="value")
         fill.observe(response, names="value")
-        self.result_tabs.children[3].children = [spectra_type, paras, g]
+        self.result_tabs.children[3].children = [
+            spectra_type,
+            voigt_profile_help,
+            paras,
+            fill,
+            g,
+        ]
         self.result_tabs.set_title(3, "XPS")
 
     def _show_xas(self):
         import plotly.graph_objects as go
 
+        spectrum_select_prompt = ipw.HTML(
+            """
+            <div style="line-height: 140%; padding-top: 0px; padding-bottom: 10px; opacity:0.5;"><b>
+            Select spectrum to plot</b></div>"""
+        )
+
         spectra = export_xas_spectra(self.node)
         spectrum_select = ipw.Dropdown(
-            description="Select spectrum to plot",
+            description="",
             disabled=False,
             value=None,
             options=[key for key in spectra.keys()],
@@ -908,7 +925,6 @@ class WorkChainViewer(ipw.VBox):
 
         def response(change):
 
-            spectra = export_xas_spectra(self.node)
             chosen_spectrum = spectrum_select.value
             spectrum = spectra[chosen_spectrum]
 
@@ -919,7 +935,11 @@ class WorkChainViewer(ipw.VBox):
             )
 
         spectrum_select.observe(response, names="value")
-        self.result_tabs.children[4].children = [g, spectrum_select]
+        self.result_tabs.children[4].children = [
+            g,
+            spectrum_select_prompt,
+            spectrum_select,
+        ]
         self.result_tabs.set_title(4, "XAS")
 
     def _show_workflow_output(self):
