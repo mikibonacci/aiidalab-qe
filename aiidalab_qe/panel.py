@@ -31,14 +31,43 @@ class Panel(ipw.VBox):
         """
         return {}
 
-    def load_panel_value(self, panel_value):
+    def load_panel_value(self, parameters):
         """Load a dictionary to set the value of the widgets in the panel.
 
-        :param panel_value: a dictionary of the values of all the widgets in the panel.
+        :param parameters: a dictionary of the values of all the widgets in the panel.
         """
-        for key, value in panel_value.items():
+        for key, value in parameters.items():
             if key in self.__dict__:
                 setattr(self, key, value)
+
+
+class PropertyPanel(Panel):
+    name = "property"
+
+    description = "Property is ..."
+    help = ""
+
+    def __init__(self, **kwargs):
+        # Checkbox to see if the abc should be calculated
+        self.run = ipw.Checkbox(
+            description=self.description,
+            indent=False,
+            value=False,
+            layout=ipw.Layout(max_width="50%"),
+        )
+        self.help_html = ipw.HTML(
+            f"""<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
+            {self.help}</div>"""
+        )
+
+        children = [self.run, self.help_html]
+        super().__init__(children, **kwargs)
+
+    def get_panel_value(self):
+        return {f"{self.name}_run": self.run.value}
+
+    def load_panel_value(self, input_dict):
+        self.run.value = input_dict.get(f"{self.name}_run", False)
 
 
 class ResultPanel(Panel):

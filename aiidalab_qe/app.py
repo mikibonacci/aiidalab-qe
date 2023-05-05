@@ -64,26 +64,6 @@ class QEApp:
             (configure_qe_app_work_chain_step, "state"),
             (submit_qe_app_work_chain_step, "previous_step_state"),
         )
-        ipw.dlink(
-            (configure_qe_app_work_chain_step, "workchain_settings"),
-            (submit_qe_app_work_chain_step, "workchain_settings"),
-        )
-        ipw.dlink(
-            (configure_qe_app_work_chain_step, "basic_settings"),
-            (submit_qe_app_work_chain_step, "basic_settings"),
-        )
-        ipw.dlink(
-            (configure_qe_app_work_chain_step, "kpoints_settings"),
-            (submit_qe_app_work_chain_step, "kpoints_settings"),
-        )
-        ipw.dlink(
-            (configure_qe_app_work_chain_step, "smearing_settings"),
-            (submit_qe_app_work_chain_step, "smearing_settings"),
-        )
-        ipw.dlink(
-            (configure_qe_app_work_chain_step, "pseudo_family_selector"),
-            (submit_qe_app_work_chain_step, "pseudo_family_selector"),
-        )
 
         ipw.dlink(
             (submit_qe_app_work_chain_step, "process"),

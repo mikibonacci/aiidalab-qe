@@ -1,14 +1,30 @@
 import ipywidgets as ipw
 
+from aiidalab_qe.panel import PropertyPanel
 from aiidalab_qe.utils import get_entries
 
 
+class BandsProperty(PropertyPanel):
+    name = "bands"
+    description = "Electronic band structure"
+    help = """The band structure workflow will
+automatically detect the default path in reciprocal space using the
+<a href="https://www.materialscloud.org/work/tools/seekpath" target="_blank">
+SeeK-path tool</a>.
+"""
+
+
+class PDOSProperty(PropertyPanel):
+    name = "PDOS"
+    description = "Projected density of states (PDOS)"
+
+
 class WorkChainSettings(ipw.VBox):
-    structure_title = ipw.HTML(
+    relax_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Structure</h4></div>"""
+        <h4>Structure optimization</h4></div>"""
     )
-    structure_help = ipw.HTML(
+    relax_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
         You have three options:<br>
         (1) Structure as is: perform a self consistent calculation using the structure provided as input.<br>
@@ -18,13 +34,6 @@ class WorkChainSettings(ipw.VBox):
     properties_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
         <h4>Properties</h4></div>"""
-    )
-    properties_help = ipw.HTML(
-        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
-        The band structure workflow will
-        automatically detect the default path in reciprocal space using the
-        <a href="https://www.materialscloud.org/work/tools/seekpath" target="_blank">
-        SeeK-path tool</a>.</div>"""
     )
 
     def __init__(self, **kwargs):
@@ -37,42 +46,39 @@ class WorkChainSettings(ipw.VBox):
             ],
             value="positions_cell",
         )
-        # Checkbox to see if the band structure should be calculated
-        self.bands_run = ipw.Checkbox(
-            description="",
-            tooltip="Calculate the electronic band structure.",
-            indent=False,
-            value=True,
-            layout=ipw.Layout(max_width="10%"),
-        )
-
-        # Checkbox to see if the PDOS should be calculated
-        self.pdos_run = ipw.Checkbox(
-            description="",
-            tooltip="Calculate the electronic PDOS.",
-            indent=False,
-            value=True,
-            layout=ipw.Layout(max_width="10%"),
-        )
-        properties = (
-            self.structure_title,
-            self.structure_help,
+        children = [
+            self.relax_title,
+            self.relax_help,
             self.relax_type,
             self.properties_title,
             ipw.HTML("Select which properties to calculate:"),
-            ipw.HBox(children=[ipw.HTML("<b>Band structure</b>"), self.bands_run]),
-            ipw.HBox(
-                children=[
-                    ipw.HTML("<b>Projected density of states (PDOS)</b>"),
-                    self.pdos_run,
-                ]
-            ),
-            self.properties_help,
-        )
+        ]
+        self.properties = {}
         entries = get_entries("aiidalab_qe_property")
-        for _name, entry_point in entries.items():
-            properties += (entry_point,)
+        for name, entry_point in entries.items():
+            self.properties[name] = entry_point()
+            children.append(self.properties[name])
         super().__init__(
-            children=properties,
+            children=children,
             **kwargs,
         )
+
+    def get_panel_value(self):
+        """Return the value of all the widgets in the panel as a dictionary.
+
+        :return: a dictionary of the values of all the widgets in the panel.
+        """
+        parameters = {"relax": self.relax_type.value, "properties": {}}
+        for name, property in self.properties.items():
+            parameters["properties"][name] = property.run.value
+        return parameters
+
+    def load_panel_value(self, parameters):
+        """Load a dictionary to set the value of the widgets in the panel.
+
+        :param parameters: a dictionary of the values of all the widgets in the panel.
+        """
+        self.relax_type.value = parameters.get("relax", "positions_cell")
+        for key, value in parameters.get("properties", {}).items():
+            if key in self.properties:
+                self.properties[key].run.value = value

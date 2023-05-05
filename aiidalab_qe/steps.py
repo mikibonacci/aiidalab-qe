@@ -14,7 +14,6 @@ from aiida.engine import ProcessBuilderNamespace, ProcessState, submit
 from aiida.orm import WorkChainNode, load_code, load_node
 from aiida.plugins import DataFactory
 from aiida_quantumespresso.common.types import ElectronicType, RelaxType, SpinType
-from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiidalab_widgets_base import (
     AiidaNodeViewWidget,
     ComputationalResourcesWidget,
@@ -24,11 +23,9 @@ from aiidalab_widgets_base import (
 )
 from IPython.display import display
 
-from aiidalab_qe.configure.advance import KpointSettings, SmearingSettings
 from aiidalab_qe.configure.basic import BasicSettings
 from aiidalab_qe.configure.workflow import WorkChainSettings
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.pseudos import PseudoFamilySelector
 from aiidalab_qe.setup_codes import QESetupWidget
 from aiidalab_qe.sssp import SSSPInstallWidget
 from aiidalab_qe.utils import get_entries
@@ -46,9 +43,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
     workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
     basic_settings = traitlets.Instance(BasicSettings, allow_none=True)
-    kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
-    smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
-    pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
 
     def __init__(self, **kwargs):
         # add plugin specific settings
@@ -60,60 +54,27 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.workchain_settings = WorkChainSettings()
         self.basic_settings = BasicSettings()
         self.workchain_settings.relax_type.observe(self._update_state, "value")
-        self.workchain_settings.bands_run.observe(self._update_state, "value")
-        self.workchain_settings.pdos_run.observe(self._update_state, "value")
-
-        self.kpoints_settings = KpointSettings()
-        self.smearing_settings = SmearingSettings()
-        self.pseudo_family_selector = PseudoFamilySelector()
-
-        ipw.dlink(
-            (self.basic_settings.workchain_protocol, "value"),
-            (self.kpoints_settings, "kpoints_distance_default"),
-            lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)[
-                "kpoints_distance"
-            ],
-        )
-
-        ipw.dlink(
-            (self.basic_settings.workchain_protocol, "value"),
-            (self.smearing_settings, "degauss_default"),
-            lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)["pw"][
-                "parameters"
-            ]["SYSTEM"]["degauss"],
-        )
-
-        ipw.dlink(
-            (self.basic_settings.workchain_protocol, "value"),
-            (self.smearing_settings, "smearing_default"),
-            lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)["pw"][
-                "parameters"
-            ]["SYSTEM"]["smearing"],
-        )
 
         self.tab = ipw.Tab(
             children=[
                 self.workchain_settings,
                 self.basic_settings,
-                ipw.VBox(
-                    children=[
-                        self.pseudo_family_selector,
-                        self.kpoints_settings,
-                        self.smearing_settings,
-                    ]
-                ),
             ],
             layout=ipw.Layout(min_height="250px"),
         )
 
         self.tab.set_title(0, "Workflow")
         self.tab.set_title(1, "Basic settings")
-        self.tab.set_title(2, "Advanced settings")
 
         # add plugin specific settings
+        self.settings = {
+            "workflow": self.workchain_settings,
+            "basic": self.basic_settings,
+        }
         entries = get_entries("aiidalab_qe_configuration")
-        for name in entries:
-            self.tab.children += (getattr(self, f"{name}_settings"),)
+        for name, entry_point in entries.items():
+            self.settings[name] = entry_point()
+            self.tab.children += (self.settings[name],)
             self.tab.set_title(len(self.tab.children) - 1, name)
 
         self._submission_blocker_messages = ipw.HTML()
@@ -148,25 +109,8 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         with self.hold_trait_notifications():
             # Work chain settings
             self.workchain_settings.relax_type.value = parameters["relax_type"]
-            self.basic_settings.spin_type.value = parameters["spin_type"]
-            self.basic_settings.electronic_type.value = parameters["electronic_type"]
-            self.workchain_settings.bands_run.value = parameters["run_bands"]
-            self.workchain_settings.pdos_run.value = parameters["run_pdos"]
-            self.basic_settings.workchain_protocol.value = parameters["protocol"]
 
             # Advanced settings
-            self.pseudo_family_selector.value = parameters["pseudo_family"]
-            if parameters.get("kpoints_distance_override", None) is not None:
-                self.kpoints_settings.kpoints_distance.value = parameters[
-                    "kpoints_distance_override"
-                ]
-                self.kpoints_settings.override_protocol_kpoints.value = True
-            if parameters.get("degauss_override", None) is not None:
-                self.smearing_settings.degauss.value = parameters["degauss_override"]
-                self.smearing_settings.override_protocol_smearing.value = True
-            if parameters.get("smearing_override", None) is not None:
-                self.smearing_settings.smearing.value = parameters["smearing_override"]
-                self.smearing_settings.override_protocol_smearing.value = True
 
     def _update_state(self, _=None):
         if self.previous_step_state == self.State.SUCCESS:
@@ -222,11 +166,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     input_structure = traitlets.Instance(StructureData, allow_none=True)
     process = traitlets.Instance(WorkChainNode, allow_none=True)
     previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
-    workchain_settings = traitlets.Instance(WorkChainSettings, allow_none=True)
-    basic_settings = traitlets.Instance(BasicSettings, allow_none=True)
-    kpoints_settings = traitlets.Instance(KpointSettings, allow_none=True)
-    smearing_settings = traitlets.Instance(SmearingSettings, allow_none=True)
-    pseudo_family_selector = traitlets.Instance(PseudoFamilySelector, allow_none=True)
     _submission_blockers = traitlets.List(traitlets.Unicode)
 
     def __init__(self, **kwargs):
@@ -515,13 +454,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         """Get the builder parameters based on the GUI inputs."""
 
         parameters = dict(
+            # TODO: add parameters
             # Work chain settings
-            relax_type=self.workchain_settings.relax_type.value,
-            electronic_type=self.basic_settings.electronic_type.value,
-            spin_type=self.basic_settings.spin_type.value,
-            run_bands=self.workchain_settings.bands_run.value,
-            run_pdos=self.workchain_settings.pdos_run.value,
-            protocol=self.basic_settings.workchain_protocol.value,
+            # Basic settings
+            # Advanced settings
             # Codes
             pw_code=self.pw_code.value,
             dos_code=self.dos_code.value,
@@ -529,13 +465,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             # Advanced settings
             pseudo_family=self.pseudo_family_selector.value,
         )
-        if self.kpoints_settings.override_protocol_kpoints.value:
-            parameters[
-                "kpoints_distance_override"
-            ] = self.kpoints_settings.kpoints_distance.value
-        if self.smearing_settings.override_protocol_smearing.value:
-            parameters["smearing_override"] = self.smearing_settings.smearing.value
-            parameters["degauss_override"] = self.smearing_settings.degauss.value
+        # add plugin specific settings
 
         return parameters
 

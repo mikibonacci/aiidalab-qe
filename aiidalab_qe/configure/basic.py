@@ -1,9 +1,10 @@
 import ipywidgets as ipw
 
+from aiidalab_qe.panel import Panel
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 
 
-class BasicSettings(ipw.VBox):
+class BasicSettings(Panel):
     materials_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
         Below you can indicate both if the material should be treated as an insulator
@@ -74,3 +75,24 @@ class BasicSettings(ipw.VBox):
             children=children,
             **kwargs,
         )
+
+    def get_panel_value(self):
+        """Return the value of all the widgets in the panel as a dictionary.
+
+        :return: a dictionary of the values of all the widgets in the panel.
+        """
+        values = {
+            "electronic_type": self.electronic_type.value,
+            "spin_type": self.spin_type.value,
+            "protocol": self.workchain_protocol.value,
+        }
+        return values
+
+    def load_panel_value(self, parameters):
+        """Load a dictionary to set the value of the widgets in the panel.
+
+        :param panel_value: a dictionary of the values of all the widgets in the panel.
+        """
+        self.spin_type.value = parameters["spin_type"]
+        self.electronic_type.value = parameters["electronic_type"]
+        self.workchain_protocol.value = parameters["protocol"]

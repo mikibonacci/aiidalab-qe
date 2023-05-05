@@ -1,8 +1,15 @@
 import ipywidgets as ipw
-import traitlets
+from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
+
+from aiidalab_qe.panel import Panel
+from aiidalab_qe.pseudos import PseudoFamilySelector
 
 
-class SmearingSettings(ipw.VBox):
+class AdvanceSettings(Panel):
+    properties_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Properties</h4></div>"""
+    )
     smearing_description = ipw.HTML(
         """<p>
         The smearing type and width is set by the chosen <b>protocol</b>.
@@ -10,71 +17,6 @@ class SmearingSettings(ipw.VBox):
         target="_blank">here</a> for a discussion).
     </p>"""
     )
-
-    # The default of `smearing` and `degauss` the type and width
-    # must be linked to the `protocol`
-    degauss_default = traitlets.Float(default_value=0.01)
-    smearing_default = traitlets.Unicode(default_value="cold")
-
-    def __init__(self, **kwargs):
-        self.override_protocol_smearing = ipw.Checkbox(
-            description="Override",
-            indent=False,
-            value=False,
-        )
-        self.smearing = ipw.Dropdown(
-            options=["cold", "gaussian", "fermi-dirac", "methfessel-paxton"],
-            value=self.smearing_default,
-            description="Smearing type:",
-            disabled=False,
-            style={"description_width": "initial"},
-        )
-        self.degauss = ipw.FloatText(
-            value=self.degauss_default,
-            step=0.005,
-            description="Smearing width (Ry):",
-            disabled=False,
-            style={"description_width": "initial"},
-        )
-        ipw.dlink(
-            (self.override_protocol_smearing, "value"),
-            (self.degauss, "disabled"),
-            lambda override: not override,
-        )
-        ipw.dlink(
-            (self.override_protocol_smearing, "value"),
-            (self.smearing, "disabled"),
-            lambda override: not override,
-        )
-        self.degauss.observe(self.set_smearing, "value")
-        self.smearing.observe(self.set_smearing, "value")
-        self.override_protocol_smearing.observe(self.set_smearing, "value")
-
-        super().__init__(
-            children=[
-                self.smearing_description,
-                ipw.HBox(
-                    [self.override_protocol_smearing, self.smearing, self.degauss]
-                ),
-            ],
-            layout=ipw.Layout(justify_content="space-between"),
-            **kwargs,
-        )
-
-    def set_smearing(self, _=None):
-        self.degauss.value = (
-            self.degauss.value
-            if self.override_protocol_smearing.value
-            else self.degauss_default
-        )
-        self.smearing.value = (
-            self.smearing.value
-            if self.override_protocol_smearing.value
-            else self.smearing_default
-        )
-
-
-class KpointSettings(ipw.VBox):
     kpoints_distance_description = ipw.HTML(
         """<div>
         The k-points mesh density of the SCF calculation is set by the <b>protocol</b>.
@@ -82,43 +24,89 @@ class KpointSettings(ipw.VBox):
         Tick the box to override the default, smaller is more accurate and costly. </div>"""
     )
 
-    # The default of `kpoints_distance` must be linked to the `protocol`
-    kpoints_distance_default = traitlets.Float(default_value=0.15)
-
     def __init__(self, **kwargs):
-        self.override_protocol_kpoints = ipw.Checkbox(
-            description="Override",
-            indent=False,
-            value=False,
+        # Work chain protocol
+        self.workchain_protocol = ipw.ToggleButtons(
+            options=["fast", "moderate", "precise"],
+            value="moderate",
+        )
+        self.pseudo_family_selector = PseudoFamilySelector()
+        #
+        self.smearing = ipw.Dropdown(
+            options=["cold", "gaussian", "fermi-dirac", "methfessel-paxton"],
+            value="cold",
+            description="Smearing type:",
+            disabled=False,
+            style={"description_width": "initial"},
+        )
+        self.degauss = ipw.FloatText(
+            value=0.01,
+            step=0.005,
+            description="Smearing width (Ry):",
+            disabled=False,
+            style={"description_width": "initial"},
         )
         self.kpoints_distance = ipw.FloatText(
-            value=self.kpoints_distance_default,
+            value=0.15,
             step=0.05,
             description="K-points distance (1/Å):",
             disabled=False,
             style={"description_width": "initial"},
         )
+        # update settings based on protocol
         ipw.dlink(
-            (self.override_protocol_kpoints, "value"),
-            (self.kpoints_distance, "disabled"),
-            lambda override: not override,
-        )
-        self.kpoints_distance.observe(self.set_kpoints_distance, "value")
-        self.override_protocol_kpoints.observe(self.set_kpoints_distance, "value")
-        self.observe(self.set_kpoints_distance, "kpoints_distance_default")
-
-        super().__init__(
-            children=[
-                self.kpoints_distance_description,
-                ipw.HBox([self.override_protocol_kpoints, self.kpoints_distance]),
+            (self.workchain_protocol, "value"),
+            (self.kpoints_distance, "value"),
+            lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)[
+                "kpoints_distance"
             ],
-            layout=ipw.Layout(justify_content="space-between"),
+        )
+
+        ipw.dlink(
+            (self.workchain_protocol, "value"),
+            (self.degauss, "value"),
+            lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)["pw"][
+                "parameters"
+            ]["SYSTEM"]["degauss"],
+        )
+
+        ipw.dlink(
+            (self.workchain_protocol, "value"),
+            (self.smearing, "value"),
+            lambda protocol: PwBaseWorkChain.get_protocol_inputs(protocol)["pw"][
+                "parameters"
+            ]["SYSTEM"]["smearing"],
+        )
+        #
+        children = [
+            self.pseudo_family_selector,
+            self.kpoints_distance_description,
+            self.kpoints_distance,
+            self.smearing_description,
+            self.smearing,
+        ]
+        # get other parameters from entry point
+        super().__init__(
+            children=children,
             **kwargs,
         )
 
-    def set_kpoints_distance(self, _=None):
-        self.kpoints_distance.value = (
-            self.kpoints_distance.value
-            if self.override_protocol_kpoints.value
-            else self.kpoints_distance_default
-        )
+    def get_panel_value(self):
+        """Return the value of all the widgets in the panel as a dictionary.
+
+        :return: a dictionary of the values of all the widgets in the panel.
+        """
+        parameters = {"relax": self.relax_type.value, "properties": {}}
+        for name, property in self.properties.items():
+            parameters["properties"][name] = property.run.value
+        return parameters
+
+    def load_panel_value(self, parameters):
+        """Load a dictionary to set the value of the widgets in the panel.
+
+        :param parameters: a dictionary of the values of all the widgets in the panel.
+        """
+        self.relax_type.value = parameters.get("relax", "positions_cell")
+        for key, value in parameters.get("properties", {}).items():
+            if key in self.properties:
+                self.properties[key].run.value = value
