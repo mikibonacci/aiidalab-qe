@@ -1,0 +1,76 @@
+import ipywidgets as ipw
+
+from aiidalab_qe.parameters import DEFAULT_PARAMETERS
+
+
+class BasicSettings(ipw.VBox):
+    materials_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
+        Below you can indicate both if the material should be treated as an insulator
+        or a metal (if in doubt, choose "Metal"),
+        and if it should be studied with magnetization/spin polarization,
+        switch magnetism On or Off (On is at least twice more costly).
+        </div>"""
+    )
+
+    protocol_title = ipw.HTML(
+        """<div style="padding-top: 0px; padding-bottom: 0px">
+        <h4>Protocol</h4></div>"""
+    )
+    protocol_help = ipw.HTML(
+        """<div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
+        The "moderate" protocol represents a trade-off between
+        accuracy and speed. Choose the "fast" protocol for a faster calculation
+        with less precision and the "precise" protocol to aim at best accuracy (at the price of longer/costlier calculations).</div>"""
+    )
+
+    def __init__(self, **kwargs):
+        # SpinType: magnetic properties of material
+        self.spin_type = ipw.ToggleButtons(
+            options=[("Off", "none"), ("On", "collinear")],
+            value=DEFAULT_PARAMETERS["spin_type"],
+            style={"description_width": "initial"},
+        )
+
+        # ElectronicType: electronic properties of material
+        self.electronic_type = ipw.ToggleButtons(
+            options=[("Metal", "metal"), ("Insulator", "insulator")],
+            value=DEFAULT_PARAMETERS["electronic_type"],
+            style={"description_width": "initial"},
+        )
+
+        # Work chain protocol
+        self.workchain_protocol = ipw.ToggleButtons(
+            options=["fast", "moderate", "precise"],
+            value="moderate",
+        )
+
+        children = (
+            self.materials_help,
+            ipw.HBox(
+                children=[
+                    ipw.Label(
+                        "Electronic Type:",
+                        layout=ipw.Layout(justify_content="flex-start", width="120px"),
+                    ),
+                    self.electronic_type,
+                ]
+            ),
+            ipw.HBox(
+                children=[
+                    ipw.Label(
+                        "Magnetism:",
+                        layout=ipw.Layout(justify_content="flex-start", width="120px"),
+                    ),
+                    self.spin_type,
+                ]
+            ),
+            self.protocol_title,
+            ipw.HTML("Select the protocol:", layout=ipw.Layout(flex="1 1 auto")),
+            self.workchain_protocol,
+            self.protocol_help,
+        )
+        super().__init__(
+            children=children,
+            **kwargs,
+        )

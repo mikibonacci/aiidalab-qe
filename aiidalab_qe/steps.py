@@ -24,12 +24,9 @@ from aiidalab_widgets_base import (
 )
 from IPython.display import display
 
-from aiidalab_qe.configure.settings import (
-    BasicSettings,
-    KpointSettings,
-    SmearingSettings,
-    WorkChainSettings,
-)
+from aiidalab_qe.configure.advance import KpointSettings, SmearingSettings
+from aiidalab_qe.configure.basic import BasicSettings
+from aiidalab_qe.configure.workflow import WorkChainSettings
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.pseudos import PseudoFamilySelector
 from aiidalab_qe.setup_codes import QESetupWidget
