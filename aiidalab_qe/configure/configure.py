@@ -41,16 +41,18 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "workflow": self.workchain_settings,
             "basic": self.basic_settings,
         }
-        entries = get_entries("aiidalab_qe_configuration")
+        self.entries = get_entries("aiidalab_qe_configuration")
         for name, entry_point in entries.items():
             self.settings[name] = entry_point()
-            self.tab.children += (self.settings[name],)
-            self.tab.set_title(len(self.tab.children) - 1, name)
             # link basic protocol to all plugin specific protocols
             if hasattr(self.settings[name], "workchain_protocol"):
                 ipw.dlink(
                     (self.basic_settings.workchain_protocol, "value"),
                     (self.settings[name].workchain_protocol, "value"),
+                )
+            if name in self.workchain_settings.properties:
+                self.workchain_settings.properties[name].run.observe(
+                    self._update_panel, "value"
                 )
 
         self._submission_blocker_messages = ipw.HTML()
@@ -118,3 +120,14 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     def reset(self):
         with self.hold_trait_notifications():
             self.set_input_parameters(DEFAULT_PARAMETERS)
+
+    def _update_panel(self, _=None):
+        """Dynamic add/remove the panel based on the the the workchain settings."""
+        self.tab.children = [self.workchain_settings, self.basic_settings]
+        for name in self.workchain_settings.properties:
+            if (
+                name in self.settings
+                and self.workchain_settings.properties[name].run.value
+            ):
+                self.tab.children += (self.settings[name],)
+                self.tab.set_title(len(self.tab.children) - 1, name)
