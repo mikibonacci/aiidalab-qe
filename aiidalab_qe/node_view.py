@@ -515,6 +515,7 @@ class WorkChainViewer(ipw.VBox):
             return
 
         self.node = node
+        builder_parameters = node.base.extras.get("builder_parameters", {})
 
         self.title = ipw.HTML(
             f"""
@@ -545,11 +546,17 @@ class WorkChainViewer(ipw.VBox):
 
         # add plugin specific settings
         entries = get_entries("aiidalab_qe_result")
+
         # print("plugin entries: ", entries)
+        self.results = {}
         for name, entry_point in entries.items():
-            # print(name, entry_point)
-            self.result_tabs.children += (entry_point(self.node), )
-            self.result_tabs.set_title(len(self.result_tabs.children) - 1, name)
+            if not builder_parameters["workflow"]["properties"][name]:
+                continue
+            result = entry_point(self.node)
+            self.results[name] = result
+            self.result_tabs.children += (result,)
+            self.result_tabs.set_title(len(self.result_tabs.children) - 1, result.name)
+
         # An ugly fix to the structure appearance problem
         # https://github.com/aiidalab/aiidalab-qe/issues/69
         def on_selected_index_change(change):
@@ -599,6 +606,11 @@ class WorkChainViewer(ipw.VBox):
             ):
                 self._show_electronic_structure()
                 self._results_shown.add("electronic_structure")
+            for result in self.result_tabs.children[3:]:
+                if result.name in self._results_shown:
+                    continue
+                result._update_view()
+                self._results_shown.add(result.name)
 
     def _show_structure(self):
         self._structure_view = StructureDataViewer(

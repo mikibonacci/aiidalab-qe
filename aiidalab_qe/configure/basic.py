@@ -5,6 +5,8 @@ from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 
 
 class BasicSettings(Panel):
+    name = "Basic Settings"
+
     materials_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
         Below you can indicate both if the material should be treated as an insulator

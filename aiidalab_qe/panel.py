@@ -14,6 +14,8 @@ class Panel(ipw.VBox):
     The base class has a method to return the value of all the widgets in the panel as a dictionary. The dictionary is used to construct the input file for the calculation. The class also has a method to load a dictionary to set the value of the widgets in the panel.
     """
 
+    name = "panel"
+
     def __init__(self, children=None, **kwargs):
         """Initialize the panel.
 
@@ -76,6 +78,8 @@ class ResultPanel(Panel):
     The base class has a method to load the result of the calculation. And a show method to display it in the panel. It has a update method to update the result in the panel.
     """
 
+    name = "result"
+
     def __init__(self, wc_node=None, children=None, **kwargs):
         """Initialize the panel.
 
@@ -98,7 +102,7 @@ class ResultPanel(Panel):
         """Display the result in the panel."""
         pass
 
-    def update(self, result):
+    def _update_view(self):
         """Update the result in the panel.
 
         :param result: the result of the calculation.

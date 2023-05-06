@@ -6,6 +6,8 @@ from aiidalab_qe.pseudos import PseudoFamilySelector
 
 
 class AdvanceSettings(Panel):
+    name = "Advance Settings"
+
     properties_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
         <h4>Properties</h4></div>"""

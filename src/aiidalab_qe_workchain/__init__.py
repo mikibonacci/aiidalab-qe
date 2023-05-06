@@ -40,6 +40,8 @@ class QeAppWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         """Define the process specification."""
+        # yapf: disable
+        super().define(spec)
         entries = get_entries("aiidalab_qe_subworkchain")
         for name, entry_point in entries.items():
             plugin_workchain = entry_point
@@ -57,9 +59,6 @@ class QeAppWorkChain(WorkChain):
                 f"ERROR_SUB_PROCESS_FAILED_{name}",
                 message=f"The plugin {name} WorkChain sub process failed",
             )
-
-        # yapf: disable
-        super().define(spec)
         spec.input('structure', valid_type=StructureData,
                    help='The inputs structure.')
         spec.input('clean_workdir', valid_type=Bool, default=lambda: Bool(False),
@@ -196,12 +195,12 @@ class QeAppWorkChain(WorkChain):
         for name, entry_point in entries.items():
             if parameters["workflow"]["properties"][name]:
                 workchain = entry_point
-                plugin = workchain.get_builder_from_protocol(
+                plugin_builder = workchain.get_builder_from_protocol(
                     codes=codes,
                     structure=structure,
                     parameters=parameters,
                 )
-                setattr(builder, name, plugin)
+                setattr(builder, name, plugin_builder)
             else:
                 builder.pop(name, None)
         return builder
