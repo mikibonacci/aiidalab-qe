@@ -49,7 +49,7 @@ class StructureSelectionStep(ipw.VBox, WizardAppWidgetStep):
     structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
     confirmed_structure = traitlets.Instance(aiida.orm.StructureData, allow_none=True)
 
-    def __init__(self, manager, description=None, **kwargs):
+    def __init__(self, parent, manager, description=None, **kwargs):
         self.manager = manager
 
         if description is None:

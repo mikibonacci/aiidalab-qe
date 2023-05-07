@@ -22,7 +22,6 @@ from aiidalab_widgets_base import (
 )
 from IPython.display import display
 
-from aiidalab_qe.configure.configure import ConfigureQeAppWorkChainStep
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.setup_codes import QESetupWidget
 from aiidalab_qe.sssp import SSSPInstallWidget
@@ -66,9 +65,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
     _submission_blockers = traitlets.List(traitlets.Unicode)
 
-    def __init__(self, **kwargs):
-        # this configure_step will be overwritten by the ConfigureQeAppWorkChainStep in the app
-        self.configure_step = ConfigureQeAppWorkChainStep(auto_advance=True)
+    def __init__(self, parent, **kwargs):
+        self.parent = parent
         self.message_area = ipw.Output()
         self._submission_blocker_messages = ipw.HTML()
 
@@ -126,7 +124,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.qe_setup_status.observe(self._auto_select_code, "installed")
         #
         ipw.dlink(
-            (self.configure_step, "state"),
+            (self.parent.configure_step, "state"),
             (self, "previous_step_state"),
         )
 
@@ -169,7 +167,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
         # No code selected for pdos (this is ignored while the setup process is running).
         if (
-            self.configure_step.settings["workflow"].properties["pdos"].run.value
+            self.parent.configure_step.settings["workflow"].properties["pdos"].run.value
             and (self.dos_code.value is None or self.projwfc_code.value is None)
             and not self.qe_setup_status.busy
         ):
@@ -180,7 +178,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             yield "The SSSP library is not installed."
 
         if (
-            self.configure_step.settings["workflow"].properties["pdos"].run.value
+            self.parent.configure_step.settings["workflow"].properties["pdos"].run.value
             and not any(
                 [
                     self.pw_code.value is None,
@@ -373,7 +371,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 )
                 if builder_parameters is not None:
                     self.set_selected_codes(builder_parameters["codes"])
-                    self.configure_step.set_input_parameters(builder_parameters)
+                    self.parent.configure_step.set_input_parameters(builder_parameters)
             self._update_state()
 
     def _on_submit_button_clicked(self, _):
@@ -408,7 +406,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                         update_builder(v, resources, npools)
 
         assert self.input_structure is not None
-        parameters = self.configure_step.get_input_parameters()
+        parameters = self.parent.configure_step.get_input_parameters()
         parameters["codes"] = self.get_selected_codes()
 
         builder = QeAppWorkChain.get_builder_from_protocol(
@@ -436,7 +434,8 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 class ViewQeAppWorkChainStatusAndResultsStep(ipw.VBox, WizardAppWidgetStep):
     process = traitlets.Unicode(allow_none=True)
 
-    def __init__(self, **kwargs):
+    def __init__(self, parent, **kwargs):
+        self.parent = parent
         self.process_tree = ProcessNodesTreeWidget()
         ipw.dlink(
             (self, "process"),
