@@ -545,7 +545,7 @@ class WorkChainViewer(ipw.VBox):
         self.result_tabs.set_title(2, "Electronic Structure (n/a)")
 
         # add plugin specific settings
-        entries = get_entries("aiidalab_qe_result")
+        entries = get_entries("aiidalab_qe.result")
 
         # print("plugin entries: ", entries)
         self.results = {}

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Panel for ABC plugin.
+"""Panel for Bands plugin.
 
 Authors:
 
     * Xing Wang <xing.wang@psi.ch>
 """
 import ipywidgets as ipw
-from aiida.orm import Float, Int
+from aiida.orm import Int, Str
 
 from aiidalab_qe.panel import Panel
 
@@ -52,7 +52,7 @@ class BandsSettings(Panel):
     def get_panel_value(self):
         """Return a dictionary with the input parameters for the plugin."""
         return {
-            "path": Float(self.path.value),
+            "path": Str(self.path.value),
             "npoint": Int(self.npoint.value),
         }
 

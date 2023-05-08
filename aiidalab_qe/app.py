@@ -19,20 +19,30 @@ from aiidalab_qe.steps import (
     ViewQeAppWorkChainStatusAndResultsStep,
 )
 from aiidalab_qe.structures import Examples, StructureSelectionStep
+from aiidalab_qe.utils import get_entries
 
 OptimadeQueryWidget.title = "OPTIMADE"  # monkeypatch
+
+
+def load_structure_importers():
+    # add plugin specific structure importers
+    importers = [
+        StructureUploadWidget(title="Upload file"),
+        OptimadeQueryWidget(embedded=False),
+        StructureBrowserWidget(title="AiiDA database"),
+        StructureExamplesWidget(title="From Examples", examples=Examples),
+    ]
+    entries = get_entries("aiidalab_qe.structure.importer")
+    for _name, entry_point in entries.items():
+        importers.append(entry_point())
+    return importers
 
 
 class QEApp:
     def __init__(self) -> None:
         # Create the application steps
         structure_manager_widget = StructureManagerWidget(
-            importers=[
-                StructureUploadWidget(title="Upload file"),
-                OptimadeQueryWidget(embedded=False),
-                StructureBrowserWidget(title="AiiDA database"),
-                StructureExamplesWidget(title="From Examples", examples=Examples),
-            ],
+            importers=load_structure_importers,
             editors=[
                 BasicCellEditor(title="Edit cell"),
                 BasicStructureEditor(title="Edit structure"),
@@ -56,18 +66,18 @@ class QEApp:
             (self.configure_step, "previous_step_state"),
         )
         ipw.dlink(
+            (self.configure_step, "state"),
+            (self.submit_step, "previous_step_state"),
+        )
+        ipw.dlink(
             (self.structure_step, "confirmed_structure"),
             (self.submit_step, "input_structure"),
         )
-
         ipw.dlink(
             (self.submit_step, "process"),
             (self.results_step, "process"),
             transform=lambda node: node.uuid if node is not None else None,
         )
-
-        # here I add the configure step to the submit step, so that the submit step can access the configuration parameters
-        # maybe we can find a better way to do this
 
         # Add the application steps to the application
         self.steps = WizardAppWidget(

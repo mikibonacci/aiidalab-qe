@@ -122,11 +122,6 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.qe_setup_status.observe(self._update_state, "busy")
         self.qe_setup_status.observe(self._toggle_install_widgets, "installed")
         self.qe_setup_status.observe(self._auto_select_code, "installed")
-        #
-        ipw.dlink(
-            (self.parent.configure_step, "state"),
-            (self, "previous_step_state"),
-        )
 
         super().__init__(
             children=[

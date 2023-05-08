@@ -42,7 +42,7 @@ class QeAppWorkChain(WorkChain):
         """Define the process specification."""
         # yapf: disable
         super().define(spec)
-        entries = get_entries("aiidalab_qe_subworkchain")
+        entries = get_entries("aiidalab_qe.subworkchain")
         for name, entry_point in entries.items():
             plugin_workchain = entry_point
             spec.expose_inputs(
@@ -191,7 +191,7 @@ class QeAppWorkChain(WorkChain):
 
         # builder.clean_workdir = overrides.get("clean_workdir", Bool(False))
         # add plugin workchain
-        entries = get_entries("aiidalab_qe_subworkchain")
+        entries = get_entries("aiidalab_qe.subworkchain")
         for name, entry_point in entries.items():
             if parameters["workflow"]["properties"][name]:
                 workchain = entry_point
@@ -363,7 +363,7 @@ class QeAppWorkChain(WorkChain):
 
     def run_plugin(self):
         """Run the `PdosWorkChain`."""
-        entries = get_entries("aiidalab_qe_subworkchain")
+        entries = get_entries("aiidalab_qe.subworkchain")
         self.ctx.plugin_entries = entries
         plugin_running = {}
         self.report(f"Plugins: {entries}")

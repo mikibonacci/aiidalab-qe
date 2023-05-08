@@ -54,7 +54,7 @@ class WorkChainSettings(ipw.VBox):
             ipw.HTML("Select which properties to calculate:"),
         ]
         self.properties = {}
-        entries = get_entries("aiidalab_qe_property")
+        entries = get_entries("aiidalab_qe.property")
         for name, entry_point in entries.items():
             self.properties[name] = entry_point()
             children.append(self.properties[name])

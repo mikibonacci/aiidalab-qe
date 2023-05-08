@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Panel for ABC plugin.
+"""Panel for PDOS plugin.
 
 Authors:
 
