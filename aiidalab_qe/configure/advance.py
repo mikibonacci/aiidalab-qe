@@ -6,7 +6,7 @@ from aiidalab_qe.pseudos import PseudoFamilySelector
 
 
 class AdvanceSettings(Panel):
-    name = "Advance Settings"
+    title = "Advance Settings"
 
     properties_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
@@ -80,16 +80,14 @@ class AdvanceSettings(Panel):
             ]["SYSTEM"]["smearing"],
         )
         #
-        children = [
+        self.children = [
             self.pseudo_family_selector,
             self.kpoints_distance_description,
             self.kpoints_distance,
             self.smearing_description,
             self.smearing,
         ]
-        # get other parameters from entry point
         super().__init__(
-            children=children,
             **kwargs,
         )
 

@@ -1,22 +1,6 @@
 import ipywidgets as ipw
 
-from aiidalab_qe.panel import PropertyPanel
 from aiidalab_qe.utils import get_entries
-
-
-class BandsProperty(PropertyPanel):
-    name = "bands"
-    description = "Electronic band structure"
-    help = """The band structure workflow will
-automatically detect the default path in reciprocal space using the
-<a href="https://www.materialscloud.org/work/tools/seekpath" target="_blank">
-SeeK-path tool</a>.
-"""
-
-
-class PDOSProperty(PropertyPanel):
-    name = "PDOS"
-    description = "Projected density of states (PDOS)"
 
 
 class WorkChainSettings(ipw.VBox):

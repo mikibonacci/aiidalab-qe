@@ -14,15 +14,15 @@ class Panel(ipw.VBox):
     The base class has a method to return the value of all the widgets in the panel as a dictionary. The dictionary is used to construct the input file for the calculation. The class also has a method to load a dictionary to set the value of the widgets in the panel.
     """
 
-    name = "panel"
+    title = "Panel"
 
-    def __init__(self, children=None, **kwargs):
+    def __init__(self, **kwargs):
         """Initialize the panel.
 
         :param kwargs: keyword arguments to pass to the ipw.VBox constructor.
         """
         super().__init__(
-            children=children,
+            children=self.children,
             **kwargs,
         )
 
@@ -44,26 +44,24 @@ class Panel(ipw.VBox):
 
 
 class PropertyPanel(Panel):
-    name = "property"
-
-    description = "Property is ..."
-    help = ""
+    title = "Property"
+    description = ""
 
     def __init__(self, **kwargs):
         # Checkbox to see if the abc should be calculated
         self.run = ipw.Checkbox(
-            description=self.description,
+            description=self.title,
             indent=False,
             value=False,
             layout=ipw.Layout(max_width="50%"),
         )
-        self.help_html = ipw.HTML(
+        self.description_html = ipw.HTML(
             f"""<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
-            {self.help}</div>"""
+            {self.description}</div>"""
         )
 
-        children = [self.run, self.help_html]
-        super().__init__(children, **kwargs)
+        self.children = [self.run, self.description_html]
+        super().__init__(**kwargs)
 
     def get_panel_value(self):
         return {f"{self.name}_run": self.run.value}
@@ -78,29 +76,24 @@ class ResultPanel(Panel):
     The base class has a method to load the result of the calculation. And a show method to display it in the panel. It has a update method to update the result in the panel.
     """
 
-    name = "result"
+    workchain_label = ""
+    title = "Result"
 
-    def __init__(self, wc_node=None, children=None, **kwargs):
-        """Initialize the panel.
+    def __init__(self, qeapp_node, **kwargs):
+        self.qeapp_node = qeapp_node
+        self.children = [
+            ipw.VBox(
+                [ipw.Label(f"{self.title} not available.")],
+                layout=ipw.Layout(min_height="380px"),
+            )
+        ]
+        super().__init__(**kwargs)
 
-        :param kwargs: keyword arguments to pass to the ipw.VBox constructor.
-        """
-        self.wc_node = wc_node
-        super().__init__(
-            children=children,
-            **kwargs,
+    @property
+    def node(self):
+        return self.qeapp_node.base.links.get_outgoing().get_node_by_label(
+            self.workchain_label
         )
-
-    def load_result(self, result):
-        """Load the result of the calculation.
-
-        :param result: the result of the calculation.
-        """
-        pass
-
-    def show(self):
-        """Display the result in the panel."""
-        pass
 
     def _update_view(self):
         """Update the result in the panel.

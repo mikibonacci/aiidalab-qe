@@ -12,7 +12,7 @@ from aiidalab_qe.panel import Panel
 
 
 class PDOSSettings(Panel):
-    name = "PDOS Settings"
+    title = "PDOS Settings"
 
     def __init__(self, **kwargs):
         self.settings_title = ipw.HTML(
@@ -47,13 +47,13 @@ class PDOSSettings(Panel):
             style={"description_width": "initial"},
         )
 
-        children = [
+        self.children = [
             self.settings_title,
             self.settings_help,
             self.Emin,
             self.Emax,
         ]
-        super().__init__(children, **kwargs)
+        super().__init__(**kwargs)
 
     def get_panel_value(self):
         """Return a dictionary with the input parameters for the plugin."""

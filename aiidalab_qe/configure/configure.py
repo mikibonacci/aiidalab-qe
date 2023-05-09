@@ -142,4 +142,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 and self.workchain_settings.properties[name].run.value
             ):
                 self.tab.children += (self.settings[name],)
-                self.tab.set_title(len(self.tab.children) - 1, self.settings[name].name)
+                self.tab.set_title(
+                    len(self.tab.children) - 1, self.settings[name].title
+                )

@@ -5,7 +5,7 @@ from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 
 
 class BasicSettings(Panel):
-    name = "Basic Settings"
+    title = "Basic Settings"
 
     materials_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
@@ -46,7 +46,7 @@ class BasicSettings(Panel):
             style={"description_width": "initial"},
         )
 
-        children = (
+        self.children = (
             self.materials_help,
             ipw.HBox(
                 children=[
@@ -72,7 +72,6 @@ class BasicSettings(Panel):
             self.protocol_help,
         )
         super().__init__(
-            children=children,
             **kwargs,
         )
 

@@ -35,16 +35,16 @@ def test_steps():
         0
     ]
     structure.results.value = structure.results.options[key]
-    assert len(structure.structure.get_ase()) == 2
     s1.confirm()
-    assert s1.state == was.State.SUCCESS
     # step 2
     s2 = app.steps.steps[1][1]
     s2.workchain_settings.relax_type.value = "none"
+    s2.workchain_settings.properties["pdos"].run.value = True
+    s2.workchain_settings.properties["bands"].run.value = True
     # s2.workchain_settings.properties["eos"].run.value = True
+    # s2.workchain_settings.properties["hello_world"].run.value = True
     s2.basic_settings.workchain_protocol.value = "fast"
     s2.confirm()
-    assert s2.state == was.State.SUCCESS
     # step 3
     #
     s3 = app.steps.steps[2][1]

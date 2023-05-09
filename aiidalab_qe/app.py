@@ -42,7 +42,7 @@ class QEApp:
     def __init__(self) -> None:
         # Create the application steps
         structure_manager_widget = StructureManagerWidget(
-            importers=load_structure_importers,
+            importers=load_structure_importers(),
             editors=[
                 BasicCellEditor(title="Edit cell"),
                 BasicStructureEditor(title="Edit structure"),
