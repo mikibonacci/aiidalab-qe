@@ -7,7 +7,6 @@ Authors:
 """
 import ipywidgets as ipw
 from aiida.orm import Int, Str
-
 from aiidalab_qe.panel import Panel
 
 
@@ -26,11 +25,11 @@ class Settings(Panel):
 
     pseudo_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Pseudo-potential</h4></div>"""
+        <h4>Pseudopotential</h4></div>"""
     )
     pseudo_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 0px">
-        Ground-state and excited-state pseudopotentials for each absorbing element.
+        Please select a pseudopotential group. Ground-state and excited-state pseudopotentials for each absorbing element.
         </div>"""
     )
 
@@ -40,7 +39,7 @@ class Settings(Panel):
     )
     element_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 6px; padding-bottom: 0px">
-        The list of elements (e.g. C, O) to be considered for analysis. If no elements list is given, we instead calculate all elements in the structure.
+        The list of elements to be considered for analysis. If no elements list is given, we instead calculate all elements in the structure.
         </div>"""
     )
     structure_title = ipw.HTML(
@@ -79,37 +78,22 @@ class Settings(Panel):
         # Core hole treatment type
         self.core_hole_treatment = ipw.ToggleButtons(
             options=[
+                ("XCH(smear)", "xch_smear"),
+                ("XCH(fixed)", "xch_fixed"),
                 ("Full", "full"),
-                ("Half", "half"),
-                ("Xch_fixed", "xch_fixed"),
-                ("Xch_smear", "xch_smear"),
             ],
-            value="full",
+            value="xch_smear",
         )
-        self.es_pseudo = ipw.Text(
-            description="excited-state pseudopotentials:",
-            value="core_hole",
-            style={"description_width": "initial"},
+        self.pseudo_group = ipw.Dropdown(
+            options=["cold", "gaussian", "fermi-dirac", "methfessel-paxton"],
+            value="cold",
+            description="Group:",
             disabled=False,
-        )
-        self.gs_pseudo = ipw.Text(
-            description="ground-state pseudopotentials:",
-            value="gipaw",
             style={"description_width": "initial"},
-            disabled=False,
         )
-        self.core_wfc_data = ipw.Text(
-            description="core wavefunction data",
-            value="core_wfc_data",
-            style={"description_width": "initial"},
-            disabled=False,
-        )
-        self.elements_list = ipw.Text(
-            description="Select element:",
-            value="",
-            style={"description_width": "initial"},
-            disabled=False,
-        )
+        self.elements_list = ipw.VBox(
+            )
+        
         self.structure_type = ipw.ToggleButtons(
             options=[
                 ("Molecule", "molecule"),
@@ -155,9 +139,7 @@ class Settings(Panel):
             ),
             self.pseudo_title,
             self.pseudo_help,
-            ipw.HBox(
-                [self.es_pseudo, self.gs_pseudo, self.core_wfc_data],
-            ),
+            self.pseudo_group,
             self.element_title,
             self.element_help,
             ipw.HBox(
@@ -184,11 +166,27 @@ class Settings(Panel):
     def get_panel_value(self):
         """Return a dictionary with the input parameters for the plugin."""
         return {
-            "path": Str(self.path.value),
-            "npoint": Int(self.npoint.value),
+            "core_hole_treatment": Str(self.core_hole_treatment.value),
+            "elements_list": [element.description for element in self.elements_list.children if element.value],
+            "structure_type": Str(self.structure_type.value),
+            "supercell_min_parameter": Int(self.supercell_min_parameter.value),
+            "calc_binding_energy": self.calc_binding_energy.value,
         }
 
     def load_panel_value(self, input_dict):
         """Load a dictionary with the input parameters for the plugin."""
         self.path.value = input_dict.get("path", 1)
         self.npoint.value = input_dict.get("npoint", 2)
+
+    def _update_state(self):
+        """Update the state of the panel."""
+        structure = self.parent.parent.structure_step.confirmed_structure
+        elements_list = [Kind.symbol for Kind in structure.kinds]
+        checkbox_list = []
+        for element in elements_list:
+            checkbox_list += (ipw.Checkbox(description=element,
+                                                         indent=False,
+                                                         value=False,
+                                                         layout=ipw.Layout(max_width="50%")
+                                                        ),)
+        self.elements_list.children = checkbox_list

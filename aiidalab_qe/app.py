@@ -66,6 +66,10 @@ class QEApp:
             (self.configure_step, "previous_step_state"),
         )
         ipw.dlink(
+            (self.structure_step, "confirmed_structure"),
+            (self.configure_step, "input_structure"),
+        )
+        ipw.dlink(
             (self.configure_step, "state"),
             (self.submit_step, "previous_step_state"),
         )

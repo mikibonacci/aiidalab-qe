@@ -1,26 +1,23 @@
 import ipywidgets as ipw
 import traitlets
+from aiida.plugins import DataFactory
 from aiidalab_widgets_base import WizardAppWidgetStep
-
 from aiidalab_qe.configure.advance import AdvanceSettings
 from aiidalab_qe.configure.basic import BasicSettings
 from aiidalab_qe.configure.workflow import WorkChainSettings
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
 from aiidalab_qe.utils import get_entries
 
+StructureData = DataFactory("core.structure")
 
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     confirmed = traitlets.Bool()
     previous_step_state = traitlets.UseEnum(WizardAppWidgetStep.State)
+    input_structure = traitlets.Instance(StructureData, allow_none=True)
 
     def __init__(self, parent, **kwargs):
         self.parent = parent
-        # add plugin specific settings
-        entries = get_entries("aiidalab_qe.configuration")
-        for name, entry_point in entries.items():
-            new_name = f"{name}_settings"
-            setattr(self, new_name, entry_point())
-        # built-in settings
+        
         self.workchain_settings = WorkChainSettings()
         self.basic_settings = BasicSettings()
         self.advance_settings = AdvanceSettings()
@@ -49,9 +46,10 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "basic": self.basic_settings,
             "advance": self.advance_settings,
         }
-        self.entries = get_entries("aiidalab_qe_configuration")
+        # add plugin specific settings
+        entries = get_entries("aiidalab_qe.configuration")
         for name, entry_point in entries.items():
-            self.settings[name] = entry_point()
+            self.settings[name] = entry_point(parent=self)
             # link basic protocol to all plugin specific protocols
             if hasattr(self.settings[name], "workchain_protocol"):
                 ipw.dlink(
@@ -110,12 +108,16 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.confirm_button.disabled = False
             self._submission_blocker_messages.value = ""
             self.state = self.State.CONFIGURED
+            # update plugin specific settings
+            for _, settings in self.settings.items():
+                settings._update_state()
         elif self.previous_step_state == self.State.FAIL:
             self.state = self.State.FAIL
         else:
             self.confirm_button.disabled = True
             self.state = self.State.INIT
             self.set_input_parameters(DEFAULT_PARAMETERS)
+        
 
     def confirm(self, _=None):
         self.confirm_button.disabled = False

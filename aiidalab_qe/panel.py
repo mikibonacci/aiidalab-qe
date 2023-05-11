@@ -16,11 +16,12 @@ class Panel(ipw.VBox):
 
     title = "Panel"
 
-    def __init__(self, **kwargs):
+    def __init__(self, parent=None, **kwargs):
         """Initialize the panel.
 
         :param kwargs: keyword arguments to pass to the ipw.VBox constructor.
         """
+        self.parent = parent
         super().__init__(
             children=self.children,
             **kwargs,
@@ -41,6 +42,10 @@ class Panel(ipw.VBox):
         for key, value in parameters.items():
             if key in self.__dict__:
                 setattr(self, key, value)
+    
+    def _update_state(self):
+        """Update the state of the panel."""
+        pass
 
 
 class PropertyPanel(Panel):
