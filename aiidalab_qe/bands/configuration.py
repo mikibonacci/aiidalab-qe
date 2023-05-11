@@ -11,7 +11,7 @@ from aiida.orm import Int, Str
 from aiidalab_qe.panel import Panel
 
 
-class BandsSettings(Panel):
+class Settings(Panel):
     title = "Bands Structure Settings"
 
     def __init__(self, **kwargs):

@@ -11,7 +11,7 @@ from aiida.orm import Float, Int
 from aiidalab_qe.panel import Panel
 
 
-class PDOSSettings(Panel):
+class Settings(Panel):
     title = "PDOS Settings"
 
     def __init__(self, **kwargs):
