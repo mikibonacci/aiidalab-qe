@@ -60,6 +60,7 @@ class PseudoFamilySelector(ipw.VBox):
             options=["PBE", "PBEsol"],
             value=DEFAULT_PARAMETERS["advance"]["pseudo_family"].split("/")[2],
             style={"description_width": "initial"},
+            disable=False,
         )
         self.dft_functional.observe(self.set_value_trait, "value")
 
@@ -67,6 +68,7 @@ class PseudoFamilySelector(ipw.VBox):
             options=["efficiency", "precision"],
             value=DEFAULT_PARAMETERS["advance"]["pseudo_family"].split("/")[3],
             layout=ipw.Layout(max_width="80%"),
+            disable=False,
         )
         self.protocol_selection.observe(self.set_value_trait, "value")
 
@@ -86,8 +88,6 @@ class PseudoFamilySelector(ipw.VBox):
             ],
             layout=ipw.Layout(max_width="60%"),
         )
-        ipw.dlink((self.show_ui, "value"), (self.protocol_selection, "disabled"))
-        ipw.dlink((self.show_ui, "value"), (self.dft_functional, "disabled"))
 
         self.set_value_trait()
 

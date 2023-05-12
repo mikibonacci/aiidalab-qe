@@ -12,7 +12,7 @@ def test_steps():
     # step 1
     # select structure
     StructureData = DataFactory("core.structure")
-    mol = read(Examples[0][1])
+    mol = read(Examples[0][-1])
     mol = StructureData(ase=mol)
     mol.store()
     #
@@ -29,6 +29,7 @@ def test_steps():
     s2.workchain_settings.relax_type.value = "none"
     s2.workchain_settings.properties["xps"].run.value = True
     s2.basic_settings.workchain_protocol.value = "fast"
+    s2.settings["xps"].structure_type.value = "molecule"
     s2.settings["xps"].elements_list.children[0].value = True
     parameters = s2.get_input_parameters()
     s2.confirm()

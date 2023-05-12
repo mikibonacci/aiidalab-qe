@@ -373,7 +373,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.submit_button.disabled = True
         self.submit()
 
-    def submit(self, _=None):
+    def get_builder(self, _=None):
         from copy import deepcopy
 
         def update_builder(buildy, resources, npools):
@@ -415,6 +415,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         }
 
         update_builder(builder, resources, self.parallelization.npools.value)
+        return builder, parameters
+
+    def submit(self, _=None):
+        builder, parameters = self.get_builder()
         with self.hold_trait_notifications():
             self.process = submit(builder)
             # Set the builder parameters on the work chain

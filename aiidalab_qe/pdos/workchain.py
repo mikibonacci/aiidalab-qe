@@ -9,11 +9,9 @@ def get_builder(codes, structure, parameters):
     pw_code = load_code(codes.get("pw_code"))
     dos_code = load_code(codes.get("dos_code"))
     projwfc_code = load_code(codes.get("projwfc_code"))
-    pw = parameters["advance"].get("pw", {})
-    pw["pseudo_family"] = parameters["advance"].get("pseudo_family", None)
     overrides = {
-        "scf": pw,
-        "nscf": pw,
+        "scf": parameters["advance"],
+        "nscf": parameters["advance"],
     }
     parameters = parameters["basic"]
     builder = PdosWorkChain.get_builder_from_protocol(

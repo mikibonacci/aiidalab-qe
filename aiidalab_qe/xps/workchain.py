@@ -38,10 +38,22 @@ def get_builder(codes, structure, parameters):
         correction_energies[element] = all_correction_energies[label]["core"]
         elements.append(element)
     # TODO should we override the cutoff_wfc, cutoff_rho by the new pseudo?
-    structure_preparation_settings = {"supercell_min_parameter": Float(3.0)}
+    is_molecule_input = (
+        True if xps_parameters.get("structure_type") == "molecule" else False
+    )
+    structure_preparation_settings = {
+        "supercell_min_parameter": Float(3.0),
+        "is_molecule_input": Bool(is_molecule_input),
+    }
+    if is_molecule_input:
+        # kpoint
+        # kpoints = KpointsData()
+        # kpoints.set_kpoints_mesh([1, 1, 1])
+        # parameters["advance"]["kpoints"] = kpoints
+        structure_preparation_settings["supercell_min_parameter"] = Float(8.0)
     pw_code = load_code(codes.get("pw_code"))
     overrides = {
-        "ch_scf": parameters["advance"].get("pw", {}),
+        "ch_scf": parameters["advance"],
     }
     parameters["basic"].update(xps_parameters)
     builder = XpsWorkChain.get_builder_from_protocol(
@@ -59,6 +71,7 @@ def get_builder(codes, structure, parameters):
     )
     builder.pop("relax")
     builder.pop("clean_workdir", None)
+    # print("xps builder: ", builder)
     return builder
 
 

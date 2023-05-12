@@ -40,6 +40,7 @@ Examples = [
     ("Gallium arsenide", os.path.join(file_path, "miscellaneous/structures/GaAs.xyz")),
     ("Gold (fcc)", os.path.join(file_path, "miscellaneous/structures/Au.cif")),
     ("Cobalt (hcp)", os.path.join(file_path, "miscellaneous/structures/Co.cif")),
+    ("Water molecule", os.path.join(file_path, "miscellaneous/structures/H2O.xyz")),
 ]
 
 

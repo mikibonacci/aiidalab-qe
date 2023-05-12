@@ -27,9 +27,9 @@ def test_steps():
     # step 2
     s2 = app.steps.steps[1][1]
     s2.workchain_settings.relax_type.value = "none"
-    s2.workchain_settings.properties["xps"].run.value = True
+    s2.workchain_settings.properties["bands"].run.value = True
     s2.basic_settings.workchain_protocol.value = "fast"
-    s2.settings["xps"].elements_list.children[0].value = True
+    s2.advance_settings.pseudo_family_selector.dft_functional.value = "PBE"
     parameters = s2.get_input_parameters()
     s2.confirm()
     print("parameters: ", parameters)

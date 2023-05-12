@@ -7,11 +7,9 @@ PwBandsWorkChain = WorkflowFactory("quantumespresso.pw.bands")
 def get_builder(codes, structure, parameters):
     protocol = parameters["basic"].pop("protocol", "fast")
     pw_code = load_code(codes.get("pw_code"))
-    pw = parameters["advance"].get("pw", {})
-    pw["pseudo_family"] = parameters["advance"].get("pseudo_family", None)
     overrides = {
-        "scf": pw,
-        "bands": pw,
+        "scf": parameters["advance"],
+        "bands": parameters["advance"],
     }
     parameters = parameters["basic"]
     builder = PwBandsWorkChain.get_builder_from_protocol(

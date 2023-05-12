@@ -68,7 +68,7 @@ class Settings(Panel):
     )
     structure_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
-        Below you can indicate both if the material should be treated as an molecule
+        Below you can indicate if the material should be treated as a molecule
         or a crystal.
         </div>"""
     )
@@ -131,18 +131,6 @@ class Settings(Panel):
             indent=False,
             value=False,
         )
-        self.correction_energies = ipw.Text(
-            description="Correction energies (eV):",
-            value="",
-            style={"description_width": "initial"},
-            disabled=False,
-        )
-
-        ipw.dlink(
-            (self.calc_binding_energy, "value"),
-            (self.correction_energies, "disabled"),
-            lambda override: not override,
-        )
 
         self.children = [
             self.structure_title,
@@ -165,11 +153,6 @@ class Settings(Panel):
             # self.supercell_help,
             # ipw.HBox(
             # [self.supercell_min_parameter],
-            # ),
-            # self.binding_energy_title,
-            # self.binding_energy_help,
-            # ipw.HBox(
-            # [self.calc_binding_energy, self.correction_energies],
             # ),
         ]
         self.pseudo_group.observe(self._update_pseudo, names="value")
@@ -233,9 +216,8 @@ class Settings(Panel):
                 supported_elements[ele] = [key]
             else:
                 supported_elements[ele].append(key)
-        print("supported_elements: ", supported_elements)
+        # print("supported_elements: ", supported_elements)
         for ele in elements_list:
-            print("ele: ", ele)
             if ele in supported_elements:
                 for orbital in supported_elements[ele]:
                     checkbox_list += (
