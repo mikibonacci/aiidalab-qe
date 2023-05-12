@@ -4,60 +4,41 @@ from aiida.plugins import WorkflowFactory
 XpsWorkChain = WorkflowFactory("quantumespresso.xps")
 
 
-def get_pseudo(group, element):
-    pseudos = {pseudo.element: pseudo for pseudo in group.nodes}
-    return pseudos.get(element, None)
-
-
 def get_builder(codes, structure, parameters):
-    pseudo_set = Group
-    xps_overrides = parameters.get("xps", {})
+    protocol = parameters["basic"].pop("protocol", "fast")
     pseudo_family = parameters["advance"].get("pseudo_family", None)
-    # set pseudo for normal elements
-    if pseudo_family is not None:
-        xps_overrides.setdefault("ch_scf", {})["pseudo_family"] = pseudo_family
-    # load pseudo for excited-state and group-state.
-    es_pseudo_family = xps_overrides.pop("es_pseudo", "core_hole")
-    gs_pseudo_family = xps_overrides.pop("gs_pseudo", "gipaw")
-    es_pseudo_family = (
-        QueryBuilder().append(pseudo_set, filters={"label": es_pseudo_family}).one()[0]
-    )
-    gs_pseudo_family = (
-        QueryBuilder().append(pseudo_set, filters={"label": gs_pseudo_family}).one()[0]
-    )
-    # set pseudo and core hole treatment for element
-    pseudos = {}
+    xps_parameters = parameters.get("xps", {})
+    correction_energies = xps_parameters.pop("correction_energies", {})
+    elements_list = xps_parameters.pop("elements_list", None)
+    # set core hole treatment for element
+    core_hole_treatment = xps_parameters.pop("core_hole_treatment", "xch_smear")
     core_hole_treatments = {}
-    core_hole_treatment = xps_overrides.pop("core_hole_treatment", "full")
-    elements_list = xps_overrides.pop("elements_list", None)
-    if not elements_list:
-        elements_list = [kind.symbol for kind in structure.kinds]
     for element in elements_list:
-        es_pseudo = get_pseudo(es_pseudo_family, element)
-        gs_pseudo = get_pseudo(gs_pseudo_family, element)
-        if es_pseudo is not None and gs_pseudo is not None:
-            pseudos[element] = {
-                "core_hole": es_pseudo,
-                "gipaw": gs_pseudo,
-            }
         core_hole_treatments[element] = core_hole_treatment
-    # binding energy
-    calc_binding_energy = xps_overrides.pop("calc_binding_energy", False)
-    correction_energies = xps_overrides.pop("correction_energies", {})
+    # load pseudo for excited-state and group-state.
+    pseudo_group = xps_parameters.pop("pseudo_group")
+    pseudo_group = (
+        QueryBuilder().append(Group, filters={"label": pseudo_group}).one()[0]
+    )
+    # set pseudo for element
+    pseudos = {}
+    elements = []
+    for label in elements_list:
+        element = label.split("_")[0]
+        pseudos[element] = {
+            "core_hole": [pseudo.element: pseudo for pseudo in group.nodes if pseudo.label == label][0],
+            "gipaw": [pseudo.element: pseudo for pseudo in group.nodes if pseudo.label == f"{element}_gs"][0],
+        }
+        elements.append(element)
     # TODO should we override the cutoff_wfc, cutoff_rho by the new pseudo?
-    structure_preparation_settings = xps_overrides.pop(
+    structure_preparation_settings = xps_parameters.pop(
         "structure_preparation_settings", Dict({})
     )
-
-    protocol = parameters["basic"].pop("protocol", "fast")
     pw_code = load_code(codes.get("pw_code"))
-    pw = parameters["advance"].get("pw", {})
-    pw["pseudo_family"] = parameters["advance"].get("pseudo_family", None)
     overrides = {
-        "scf": pw,
-        "bands": pw,
+        "ch_scf": parameters["advance"].get("pw", {}),
     }
-    parameters = parameters["basic"]
+    parameters = parameters["basic"].update(xps_parameters)
     builder = XpsWorkChain.get_builder_from_protocol(
         code=pw_code,
         structure=structure,
@@ -65,16 +46,15 @@ def get_builder(codes, structure, parameters):
         overrides=overrides,
         pseudos=pseudos,
         elements_list=elements_list,
-        calc_binding_energy=Bool(calc_binding_energy),
+        calc_binding_energy=Bool(True),
         correction_energies=Dict(correction_energies),
         core_hole_treatments=core_hole_treatments,
-        overrides=xps_overrides,
+        overrides=overrides,
         structure_preparation_settings=structure_preparation_settings,
         **parameters,
     )
     builder.pop("relax")
     builder.pop("clean_workdir", None)
     return builder
-
 
 subworkchain = [XpsWorkChain, get_builder]

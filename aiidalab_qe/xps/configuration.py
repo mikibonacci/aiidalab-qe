@@ -8,6 +8,23 @@ Authors:
 import ipywidgets as ipw
 from aiida.orm import Int, Str
 from aiidalab_qe.panel import Panel
+from aiida.orm import QueryBuilder
+from aiida.orm import Group
+
+def install_pseudos(pseudo_group="xps_pseudo_demo"):
+    from subprocess import run
+    import os
+    from pathlib import Path
+    base_url = "https://github.com/superstar54/xps-data/raw/main/pseudo_demo/"
+    url = base_url + pseudo_group + ".aiida"
+
+    env = os.environ.copy()
+    env["PATH"] = f"{env['PATH']}:{Path.home().joinpath('.local', 'bin')}"
+
+    def run_(*args, **kwargs):
+        return run(*args, env=env, capture_output=True, check=True, **kwargs)
+
+    run_(["verdi", "archive", "import", url])
 
 
 class Settings(Panel):
@@ -19,8 +36,10 @@ class Settings(Panel):
     )
     core_hole_treatment_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
-        You have four options:<br>
-        </div>"""
+        You have three options:<br>
+        (1) XCH(smear): places the excited electron into the conduction band, suitable for extend system.<br>
+        (2) XCH(fixed): places the excited electron into the conduction band, suitable for extend system.<br>
+        (3) Full: remove one electron from the system, suitable for molecule. </div>"""
     )
 
     pseudo_title = ipw.HTML(
@@ -54,11 +73,11 @@ class Settings(Panel):
     )
     supercell_title = ipw.HTML(
         """<div style="padding-top: 0px; padding-bottom: 0px">
-        <h4>Supercell</h4></div>"""
+        <h4>Cell size</h4></div>"""
     )
     supercell_help = ipw.HTML(
         """<div style="line-height: 140%; padding-top: 10px; padding-bottom: 10px">
-        Defining the minimum cell length in angstrom for the resulting supercell, and thus all output
+        Define the minimum cell length in angstrom for the resulting supercell, and thus all output
         structures. The default value of 8.0 angstrom will be used
         if no input is given. Setting this value to 0.0 will
         instruct the CF to not scale up the input structure.
@@ -85,8 +104,8 @@ class Settings(Panel):
             value="xch_smear",
         )
         self.pseudo_group = ipw.Dropdown(
-            options=["cold", "gaussian", "fermi-dirac", "methfessel-paxton"],
-            value="cold",
+            options=["xps_pseudo_demo"],
+            value="xps_pseudo_demo",
             description="Group:",
             disabled=False,
             style={"description_width": "initial"},
@@ -126,17 +145,14 @@ class Settings(Panel):
         )
 
         self.children = [
-            self.core_hole_treatment_title,
-            self.core_hole_treatment_help,
+            self.structure_title,
+            self.structure_help,
             ipw.HBox(
-                children=[
-                    ipw.Label(
-                        "Core Hole Treatment Type:",
-                        layout=ipw.Layout(justify_content="flex-start", width="120px"),
-                    ),
-                    self.core_hole_treatment,
-                ]
+                [self.structure_type],
             ),
+            # self.core_hole_treatment_title,
+            # self.core_hole_treatment_help,
+            # self.core_hole_treatment,
             self.pseudo_title,
             self.pseudo_help,
             self.pseudo_group,
@@ -145,48 +161,94 @@ class Settings(Panel):
             ipw.HBox(
                 [self.elements_list],
             ),
-            self.structure_title,
-            self.structure_help,
-            ipw.HBox(
-                [self.structure_type],
-            ),
-            self.supercell_title,
-            self.supercell_help,
-            ipw.HBox(
-                [self.supercell_min_parameter],
-            ),
-            self.binding_energy_title,
-            self.binding_energy_help,
-            ipw.HBox(
-                [self.calc_binding_energy, self.correction_energies],
-            ),
+            # self.supercell_title,
+            # self.supercell_help,
+            # ipw.HBox(
+                # [self.supercell_min_parameter],
+            # ),
+            # self.binding_energy_title,
+            # self.binding_energy_help,
+            # ipw.HBox(
+                # [self.calc_binding_energy, self.correction_energies],
+            # ),
         ]
+        self.pseudo_group.observe(self._update_pseudo, names="value")
         super().__init__(**kwargs)
 
     def get_panel_value(self):
         """Return a dictionary with the input parameters for the plugin."""
-        return {
+        elements_list = [element.description for element in self.elements_list.children if element.value]
+        if len(elements_list) == 0:
+            elements_list = [element.description for element in self.elements_list.children]
+        if len(elements_list) == 0:
+            raise Exception(f"No element is supported by pseudo group {self.pseudo_group.value}.")
+        parameters = {
             "core_hole_treatment": Str(self.core_hole_treatment.value),
-            "elements_list": [element.description for element in self.elements_list.children if element.value],
             "structure_type": Str(self.structure_type.value),
-            "supercell_min_parameter": Int(self.supercell_min_parameter.value),
-            "calc_binding_energy": self.calc_binding_energy.value,
+            "correction_energies": self.correction_energies,
+            "elements_list": elements_list,
         }
+        return parameters
 
     def load_panel_value(self, input_dict):
         """Load a dictionary with the input parameters for the plugin."""
-        self.path.value = input_dict.get("path", 1)
-        self.npoint.value = input_dict.get("npoint", 2)
-
+        self.pseudo_group.value = input_dict.get("pseudo_group", "xch_smear")
+        self.core_hole_treatment.value = input_dict.get("core_hole_treatment", "xch_smear")
+        self.structure_type.value = input_dict.get("structure_type", "crystal")
+        elements_list = input_dict.get("elements_list", {})
+        for ele in self.elements_list.children:
+            if ele.value in elements_list:
+                ele.value = True
+            
     def _update_state(self):
         """Update the state of the panel."""
+        self._update_element_list()
+    
+    def _update_element_list(self):
         structure = self.parent.parent.structure_step.confirmed_structure
         elements_list = [Kind.symbol for Kind in structure.kinds]
         checkbox_list = []
-        for element in elements_list:
-            checkbox_list += (ipw.Checkbox(description=element,
+        qb = QueryBuilder()
+        qb.append(Group, filters={"label": self.pseudo_group.value})
+        if len(qb.all()) == 0:
+            install_pseudos(self.pseudo_group.value)
+        group = qb.all()[0][0]
+        self.correction_energies = group.base.extras.get("correction")
+        supported_elements = {}
+        for key in self.correction_energies:
+            ele, orbital = key.split("_")
+            if ele not in supported_elements:
+                supported_elements[ele] = [key]
+            else:
+                supported_elements[ele].append(key)
+        print("supported_elements: ", supported_elements)
+        for ele in elements_list:
+            print("ele: ", ele)
+            if ele in supported_elements:
+                for orbital in supported_elements[ele]:
+                    checkbox_list += (ipw.Checkbox(description=orbital,
                                                          indent=False,
                                                          value=False,
                                                          layout=ipw.Layout(max_width="50%")
                                                         ),)
+            else:
+                checkbox_list += (ipw.Checkbox(description=ele,
+                                                         indent=False,
+                                                         value=False,
+                                                         disable=True,
+                                                         layout=ipw.Layout(max_width="50%")
+                                                        ),)
         self.elements_list.children = checkbox_list
+    
+    def _update_pseudo(self, change):
+        
+        pseudo_group = change["new"]
+        qb = QueryBuilder()
+        qb.append(Group, filters={"label": pseudo_group})
+        if len(qb.all()) == 0:
+            install_pseudos(pseudo_group)
+        group = qb.all()[0][0]
+        structure = self.parent.parent.structure_step.confirmed_structure
+        if structure:
+            elements_list = [Kind.symbol for Kind in structure.kinds]
+            

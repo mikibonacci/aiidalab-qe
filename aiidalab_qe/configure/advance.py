@@ -99,8 +99,8 @@ class AdvanceSettings(Panel):
 
         parameters = {
             "pseudo_family": self.pseudo_family_selector.value,
+            "kpoints_distance": self.kpoints_distance.value,
             "pw": {
-                "kpoints_distance": self.kpoints_distance.value,
                 "parameters": {
                     "SYSTEM": {
                         "degauss": self.degauss.value,
@@ -123,7 +123,7 @@ class AdvanceSettings(Panel):
         self.pseudo_family_selector.protocol_selection.value = parameters.get(
             "pseudo_family"
         ).split("/")[3]
+        self.kpoints_distance.value = parameters.get("kpoints_distance", 0.15)
         if parameters.get("pw") is not None:
-            self.kpoints_distance.value = parameters["pw"]["kpoints_distance"]
             self.degauss.value = parameters["pw"]["parameters"]["SYSTEM"]["degauss"]
             self.smearing.value = parameters["pw"]["parameters"]["SYSTEM"]["smearing"]

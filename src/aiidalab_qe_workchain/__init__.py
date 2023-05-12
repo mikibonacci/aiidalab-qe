@@ -142,11 +142,9 @@ class QeAppWorkChain(WorkChain):
     def get_relax_parameters(cls, parameters):
         # developer should get the plugin parameters and override from the parameters
         new_parameters = parameters["basic"]
-        pw = parameters["advance"].get("pw", {})
-        pw["pseudo_family"] = parameters["advance"].get("pseudo_family", None)
         overrides = {
-            "base": pw,
-            "base_final_scf": pw,
+            "base": parameters["advance"],
+            "base_final_scf": parameters["advance"],
         }
 
         return new_parameters, overrides
