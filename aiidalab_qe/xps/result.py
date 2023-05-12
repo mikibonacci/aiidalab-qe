@@ -198,11 +198,10 @@ class Results(ResultPanel):
         gamma.observe(response, names="value")
         sigma.observe(response, names="value")
         fill.observe(response, names="value")
-        self.result_tabs.children[3].children = [
+        self.children = [
             spectra_type,
             voigt_profile_help,
             paras,
             fill,
             g,
         ]
-        self.result_tabs.set_title(3, "XPS")
