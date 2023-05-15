@@ -24,4 +24,4 @@ def get_builder(codes, structure, parameters):
     return builder
 
 
-subworkchain = [PwBandsWorkChain, get_builder]
+workchain_and_builder = [PwBandsWorkChain, get_builder]

@@ -1,7 +1,7 @@
 import ipywidgets as ipw
 
-from aiidalab_qe.utils import get_entries
 from aiidalab_qe.panel import Panel
+from aiidalab_qe.utils import get_entry_items
 
 
 class WorkChainSettings(Panel):
@@ -39,7 +39,7 @@ class WorkChainSettings(Panel):
             ipw.HTML("Select which properties to calculate:"),
         ]
         self.properties = {}
-        entries = get_entries("aiidalab_qe.property")
+        entries = get_entry_items("aiidalab_qe.property", "outline")
         for name, entry_point in entries.items():
             self.properties[name] = entry_point()
             children.append(self.properties[name])

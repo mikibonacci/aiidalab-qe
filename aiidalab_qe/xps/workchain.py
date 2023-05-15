@@ -75,4 +75,4 @@ def get_builder(codes, structure, parameters):
     return builder
 
 
-subworkchain = [XpsWorkChain, get_builder]
+workchain_and_builder = [XpsWorkChain, get_builder]

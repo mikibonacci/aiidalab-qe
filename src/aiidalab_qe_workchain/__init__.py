@@ -34,7 +34,16 @@ def get_entries(entry_point_name="aiidalab_qe.configuration"):
     return entries
 
 
-entries = get_entries("aiidalab_qe.subworkchain")
+def get_entry_items(entry_point_name, item_name="outline"):
+    entries = get_entries(entry_point_name)
+    return {
+        name: entry_point.get(item_name)
+        for name, entry_point in entries.items()
+        if entry_point.get(item_name, False)
+    }
+
+
+entries = get_entry_items("aiidalab_qe.property", "workchain")
 
 
 class QeAppWorkChain(WorkChain):

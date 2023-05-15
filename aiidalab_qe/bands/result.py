@@ -27,7 +27,7 @@ def export_bands_data(node, fermi_energy=None):
         return None
 
 
-class Results(ResultPanel):
+class Result(ResultPanel):
     title = "Bands"
     workchain_label = "bands"
 

@@ -2,13 +2,15 @@ import ipywidgets as ipw
 import traitlets
 from aiida.plugins import DataFactory
 from aiidalab_widgets_base import WizardAppWidgetStep
+
 from aiidalab_qe.configure.advance import AdvanceSettings
 from aiidalab_qe.configure.basic import BasicSettings
 from aiidalab_qe.configure.workflow import WorkChainSettings
 from aiidalab_qe.parameters import DEFAULT_PARAMETERS
-from aiidalab_qe.utils import get_entries
+from aiidalab_qe.utils import get_entry_items
 
 StructureData = DataFactory("core.structure")
+
 
 class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
     confirmed = traitlets.Bool()
@@ -17,7 +19,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def __init__(self, parent, **kwargs):
         self.parent = parent
-        
+
         self.workchain_settings = WorkChainSettings()
         self.basic_settings = BasicSettings()
         self.advance_settings = AdvanceSettings()
@@ -47,7 +49,7 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "advance": self.advance_settings,
         }
         # add plugin specific settings
-        entries = get_entries("aiidalab_qe.configuration")
+        entries = get_entry_items("aiidalab_qe.property", "setting")
         for name, entry_point in entries.items():
             self.settings[name] = entry_point(parent=self)
             # link basic protocol to all plugin specific protocols
@@ -117,7 +119,6 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             self.confirm_button.disabled = True
             self.state = self.State.INIT
             self.set_input_parameters(DEFAULT_PARAMETERS)
-        
 
     def confirm(self, _=None):
         self.confirm_button.disabled = False

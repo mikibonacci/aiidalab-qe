@@ -27,7 +27,7 @@ from traitlets import Instance, Int, List, Unicode, Union, default, observe, val
 
 from aiidalab_qe import static
 from aiidalab_qe.report import generate_report_dict
-from aiidalab_qe.utils import get_entries
+from aiidalab_qe.utils import get_entry_items
 
 
 class MinimalStructureViewer(ipw.VBox):
@@ -360,8 +360,7 @@ class WorkChainViewer(ipw.VBox):
         self.result_tabs.set_title(1, "Final Geometry (n/a)")
 
         # add plugin specific settings
-        entries = get_entries("aiidalab_qe.result")
-
+        entries = get_entry_items("aiidalab_qe.property", "result")
         # print("plugin entries: ", entries)
         self.results = {}
         for name, entry_point in entries.items():

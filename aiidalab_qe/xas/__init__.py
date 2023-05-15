@@ -1,6 +1,11 @@
-from aiidalab_qe.panel import PropertyPanel
+from aiidalab_qe.panel import OutlinePanel
 
 
-class XASProperty(PropertyPanel):
+class XASOutline(OutlinePanel):
     title = "X-ray absorption spectroscopy (XAS)"
     help = """"""
+
+
+property = {
+    "outline": XASOutline,
+}

@@ -91,7 +91,7 @@ def xps_spectra_broadening(
     return result_spectra
 
 
-class Results(ResultPanel):
+class Result(ResultPanel):
     title = "XPS"
     workchain_label = "xps"
 

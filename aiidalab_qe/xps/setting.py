@@ -28,7 +28,7 @@ def install_pseudos(pseudo_group="xps_pseudo_demo"):
     run_(["verdi", "archive", "import", url])
 
 
-class Settings(Panel):
+class Setting(Panel):
     title = "XPS Settings"
 
     core_hole_treatment_title = ipw.HTML(

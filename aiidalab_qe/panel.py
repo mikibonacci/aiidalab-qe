@@ -42,14 +42,14 @@ class Panel(ipw.VBox):
         for key, value in parameters.items():
             if key in self.__dict__:
                 setattr(self, key, value)
-    
+
     def _update_state(self):
         """Update the state of the panel."""
         pass
 
 
-class PropertyPanel(Panel):
-    title = "Property"
+class OutlinePanel(Panel):
+    title = "Outline"
     description = ""
 
     def __init__(self, **kwargs):
@@ -64,7 +64,9 @@ class PropertyPanel(Panel):
             f"""<div style="line-height: 140%; padding-top: 0px; padding-bottom: 5px">
             {self.description}</div>"""
         )
-
+        self.accordion = ipw.Accordion(children=[self.description_html])
+        self.accordion.selected_index = None
+        # self.children = [self.run, self.accordion]
         self.children = [self.run, self.description_html]
         super().__init__(**kwargs)
 

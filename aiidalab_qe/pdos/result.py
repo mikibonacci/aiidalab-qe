@@ -157,7 +157,7 @@ def export_pdos_data(node, group_dos_by="atom"):
         return None
 
 
-class Results(ResultPanel):
+class Result(ResultPanel):
     title = "PDOS"
     workchain_label = "pdos"
 

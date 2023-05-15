@@ -27,4 +27,4 @@ def get_builder(codes, structure, parameters):
     return builder
 
 
-subworkchain = [PdosWorkChain, get_builder]
+workchain_and_builder = [PdosWorkChain, get_builder]
