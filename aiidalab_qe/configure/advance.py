@@ -85,7 +85,11 @@ class AdvanceSettings(Panel):
             self.kpoints_distance_description,
             self.kpoints_distance,
             self.smearing_description,
-            self.smearing,
+            ipw.HBox(
+                [self.smearing, self.degauss],
+                layout=ipw.Layout(justify_content="space-around"),
+                #layout=ipw.Layout(justify_content="space-between"),
+            ),
         ]
         super().__init__(
             **kwargs,
