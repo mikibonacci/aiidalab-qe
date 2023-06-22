@@ -42,6 +42,7 @@ class Setting(Panel):
         )
         self.DeltaE = ipw.FloatText(
             value=0.1,
+            step=0.05,
             description="Energy grid step (eV):",
             disabled=False,
             style={"description_width": "initial"},
@@ -52,17 +53,35 @@ class Setting(Panel):
             self.settings_help,
             self.Emin,
             self.Emax,
+            self.DeltaE,
         ]
         super().__init__(**kwargs)
 
     def get_panel_value(self):
         """Return a dictionary with the input parameters for the plugin."""
-        return {
-            "Emin": Float(self.Emin.value),
-            "Emax": Int(self.Emax.value),
+        parameters = {
+            "dos":{
+                "parameters":{
+                    "DOS":{
+                        "Emin": float(self.Emin.value),
+                        "Emax": int(self.Emax.value),
+                        "DeltaE": float(self.DeltaE.value),
+                    },
+                },
+            },
         }
+
+        parameters["projwfc"] = {
+            "parameters":{
+                "PROJWFC": parameters["dos"]["parameters"]["DOS"]
+            }
+        }
+        return parameters
+
+        
 
     def load_panel_value(self, input_dict):
         """Load a dictionary with the input parameters for the plugin."""
         self.Emin.value = input_dict.get("Emin", 1)
         self.Emax.value = input_dict.get("Emax", 2)
+        self.DeltaE.value = input_dict.get("DeltaE", 3)

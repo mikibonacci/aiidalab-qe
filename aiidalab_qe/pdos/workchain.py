@@ -12,6 +12,8 @@ def get_builder(codes, structure, parameters):
     overrides = {
         "scf": parameters["advance"],
         "nscf": parameters["advance"],
+        "dos": parameters["pdos"]["dos"],
+        "projwfc": parameters["pdos"]["projwfc"],
     }
     parameters = parameters["basic"]
     builder = PdosWorkChain.get_builder_from_protocol(
