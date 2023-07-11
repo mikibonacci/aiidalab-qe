@@ -143,8 +143,31 @@ class ConfigureQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             if (
                 name in self.settings
                 and self.workchain_settings.properties[name].run.value
-            ):
+            ):  
+                if (name == "dielectric" and self.workchain_settings.properties["phonons"].run.value) or name in ["harmonic"]:
+                    continue
+                elif name == "iraman":
+                    self.tab.children += (self.settings[name],)
+                    self.tab.set_title(
+                        len(self.tab.children) - 1, self.settings[name].title
+                    )
+                    #adding phononic properties:
+                    if not (self.workchain_settings.properties["phonons"].run.value and self.workchain_settings.properties["dielectric"].run.value):
+                        self.tab.children += (self.settings["phonons"],)
+                        self.tab.set_title(
+                            len(self.tab.children) - 1, self.settings["phonons"].title
+                        )    
+                    continue
                 self.tab.children += (self.settings[name],)
                 self.tab.set_title(
                     len(self.tab.children) - 1, self.settings[name].title
                 )
+                if name == "phonons" and self.workchain_settings.properties["dielectric"].run.value:
+                    self.tab.children += (self.settings["dielectric"],)
+                    self.tab.set_title(
+                        len(self.tab.children) - 1, self.settings["dielectric"].title
+                    )
+                
+                
+                
+

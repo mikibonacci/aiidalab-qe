@@ -27,6 +27,8 @@ from aiidalab_qe.setup_codes import QESetupWidget
 from aiidalab_qe.sssp import SSSPInstallWidget
 from aiidalab_qe.widgets import ParallelizationSettings, ResourceSelectionWidget
 from aiidalab_qe_workchain import QeAppWorkChain
+from aiidalab_qe.utils import get_entry_items
+
 
 StructureData = DataFactory("core.structure")
 Float = DataFactory("core.float")
@@ -82,6 +84,12 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             default_calc_job_plugin="quantumespresso.projwfc",
         )
 
+        #MB
+        self.phonopy_code = ComputationalResourcesWidget(
+            description="phonopy:",
+            default_calc_job_plugin="phonopy.phonopy",
+        )
+
         self.resources_config = ResourceSelectionWidget()
         self.parallelization = ParallelizationSettings()
 
@@ -92,6 +100,10 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
         self.pw_code.observe(self._update_resources, "value")
         self.dos_code.observe(self._update_state, "value")
         self.projwfc_code.observe(self._update_state, "value")
+
+        #MB
+        self.phonopy_code.observe(self._update_state, "value")
+        self.phonopy_code.observe(self._update_resources, "value")
 
         self.submit_button = ipw.Button(
             description="Submit",
@@ -130,6 +142,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
                 self.pw_code,
                 self.dos_code,
                 self.projwfc_code,
+                self.phonopy_code,
                 self.resources_config,
                 self.parallelization,
                 self.message_area,
@@ -226,6 +239,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             pw_code=self.pw_code.value,
             dos_code=self.dos_code.value,
             projwfc_code=self.projwfc_code.value,
+            phonopy_code=self.phonopy_code.value,
         )
         return parameters
 
@@ -375,7 +389,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
 
     def get_builder(self, _=None):
         from copy import deepcopy
-
+        
         def update_builder(buildy, resources, npools):
             """Update the resources and parallelization of the ``QeAppWorkChain`` builder."""
             for k, v in buildy.items():
@@ -414,7 +428,7 @@ class SubmitQeAppWorkChainStep(ipw.VBox, WizardAppWidgetStep):
             "num_mpiprocs_per_machine": self.resources_config.num_cpus.value,
         }
 
-        update_builder(builder, resources, self.parallelization.npools.value)
+        update_builder(builder, resources, self.parallelization.npools.value)        
         return builder, parameters
 
     def submit(self, _=None):

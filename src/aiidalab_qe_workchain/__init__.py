@@ -134,7 +134,14 @@ class QeAppWorkChain(WorkChain):
         # builder.clean_workdir = overrides.get("clean_workdir", Bool(False))
         # add plugin workchain
         for name, entry_point in entries.items():
-            if parameters["workflow"]["properties"][name]:
+            if name in ["phonons","dielectric"] and (parameters["workflow"]["properties"]["phonons"] and parameters["workflow"]["properties"]["dielectric"]):
+                continue
+            elif name in ["harmonic","iraman"] and (parameters["workflow"]["properties"]["phonons"] and parameters["workflow"]["properties"]["dielectric"]):
+                plugin_builder = entry_point[1](codes, structure, parameters)
+                setattr(builder, name, plugin_builder)
+            elif name in ["harmonic"] and not (parameters["workflow"]["properties"]["phonons"] and parameters["workflow"]["properties"]["dielectric"]):
+                continue
+            elif parameters["workflow"]["properties"][name]:
                 plugin_builder = entry_point[1](codes, structure, parameters)
                 setattr(builder, name, plugin_builder)
             else:
@@ -193,6 +200,8 @@ class QeAppWorkChain(WorkChain):
             self.out("structure", self.ctx.current_structure)
 
     def should_run_plugin(self, name):
+        if name in ["phonons","dielectric"] and ("harmonic" in self.inputs or "iraman" in self.inputs):
+            return False
         return name in self.inputs
 
     def run_plugin(self):
@@ -209,7 +218,8 @@ class QeAppWorkChain(WorkChain):
                 self.exposed_inputs(plugin_workchain, namespace=name)
             )
             inputs.metadata.call_link_label = name
-            inputs.structure = self.ctx.current_structure
+            if name not in ["phonons","dielectric","harmonic","iraman"]:
+                inputs.structure = self.ctx.current_structure
             inputs = prepare_process_inputs(plugin_workchain, inputs)
             self.report(f"plugin inputs: {inputs}")
             running = self.submit(plugin_workchain, **inputs)
