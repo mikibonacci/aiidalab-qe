@@ -282,8 +282,7 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
     def update(self):
         super().update()
         self.tally.value = self._get_tally()
-        if not self.collapsed:
-            self._add_branches()
+        # Only update existing branches, don't build new ones automatically
         for branch in self.branches:
             branch.update()
 
@@ -420,6 +419,7 @@ class WorkChainTreeNode(ProcessTreeNode[orm.WorkChainNode]):
         if self.collapsed:
             self.branches.add_class("open")
             self.toggle.icon = "minus"
+            # Always rebuild branches when expanding to get latest state
             self._add_branches()
         else:
             self.branches.remove_class("open")
